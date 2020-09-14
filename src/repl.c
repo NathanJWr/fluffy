@@ -20,13 +20,12 @@ int main() {
   char *ReadBuffer = malloc(ReadBufferSize);
 
   while (1) {
+    token_type Token;
     printf(">> ");
     ReadLine(ReadBuffer, &GetlineSize, stdin);
 
     LexerInit(&Lexer, ReadBuffer, ReadBuffer + GetlineSize, StringStore, StringStoreSize);
-    token_type Token = NextToken(&Lexer);
-    char *ident = Lexer.String;
+    Token = NextToken(&Lexer);
     printf("Token type: %s\n", TokenType[Token]);
-    printf("Identifier: %s\n", ident);
   }
 }
