@@ -1,3 +1,5 @@
+#define DEBUG
+
 /* standard includes */
 #include <stdio.h>
 #include <string.h>
