@@ -4,6 +4,8 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <limits.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <assert.h>
 
