@@ -1,6 +1,6 @@
 void skipWhitespace(lexer *l);
 void readChar(lexer *l);
-void readIdentifier(lexer *Lexer);
+token_type readIdentifier(lexer *Lexer);
 char peekChar(lexer *l);
 token_type lookupTokenType(char *ident);
 
@@ -12,8 +12,7 @@ token_type NextToken(lexer *Lexer) {
   switch (c) {
   default: {
     if (isalpha(c)) {
-      readIdentifier(Lexer);
-      Token = lookupTokenType(Lexer->String);
+      Token = readIdentifier(Lexer);
     } else {
       Token = TOKEN_ILLEGAL;
     }
@@ -76,10 +75,8 @@ token_type NextToken(lexer *Lexer) {
   return Token;
 }
 
-
-void LexerInit(lexer *Lexer, const char *Input,
-               const char *InputEndLocation, char *StringStore,
-               unsigned int StringStoreSize) {
+void LexerInit(lexer *Lexer, const char *Input, const char *InputEndLocation,
+               char *StringStore, unsigned int StringStoreSize) {
   Lexer->Input = Input;
   Lexer->EndLocation = InputEndLocation;
   Lexer->ParseLocation = (char *)Input;
@@ -100,21 +97,35 @@ void readChar(lexer *l) {
 }
 
 char peekChar(lexer *l) {
-  if (l->ParseLocation + 1!= l->EndLocation) {
+  if (l->ParseLocation + 1 != l->EndLocation) {
     return *(l->ParseLocation + 1);
   } else {
     return 0;
   }
 }
 
-void readIdentifier(lexer *Lexer) {
+token_type readIdentifier(lexer *Lexer) {
+  token_type Token;
+
+  /* construct a string in the string storage memory */
   char *String = Lexer->StringStorage;
+  char *StringEnd = Lexer->StringStorage;
   while (isalpha(*Lexer->ParseLocation)) {
-    *String++ = *Lexer->ParseLocation++;
+    *StringEnd++ = *Lexer->ParseLocation++;
   }
-  *String++ = '\0';
-  Lexer->String = Lexer->StringStorage;
-  Lexer->StringStorage = String;
+  *StringEnd++ = '\0';
+
+  Token = lookupTokenType(String);
+  if (Token == TOKEN_IDENT) {
+    /* actually keep the string around in memory */
+    Lexer->String = String;
+    Lexer->StringStorage = StringEnd;
+  }
+  /* Note(Nathan): We don't care about keeping strings around that
+   * are not identifiers (e.g. return, var, etc.). Therefore they will be
+   * overwritten on subsequent calls to readIdentifier() */
+
+  return Token;
 }
 
 token_type lookupTokenType(char *ident) {
