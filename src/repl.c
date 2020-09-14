@@ -11,7 +11,7 @@ void ReadLine(char *Buffer, size_t *SizeRead, FILE *ReadLocation) {
 }
 
 int main() {
-  struct lexer Lexer;
+  lexer Lexer;
   unsigned int StringStoreSize = 0x10000;
   char *StringStore = malloc(StringStoreSize);
 
@@ -24,7 +24,7 @@ int main() {
     ReadLine(ReadBuffer, &GetlineSize, stdin);
 
     LexerInit(&Lexer, ReadBuffer, ReadBuffer + GetlineSize, StringStore, StringStoreSize);
-    enum token_type Token = NextToken(&Lexer);
+    token_type Token = NextToken(&Lexer);
     char *ident = Lexer.String;
     printf("Token type: %s\n", TokenType[Token]);
     printf("Identifier: %s\n", ident);

@@ -1,11 +1,11 @@
-void skipWhitespace(struct lexer *l);
-void readChar(struct lexer *l);
-void readIdentifier(struct lexer *Lexer);
-char peekChar(struct lexer *l);
-enum token_type lookupTokenType(char *ident);
+void skipWhitespace(lexer *l);
+void readChar(lexer *l);
+void readIdentifier(lexer *Lexer);
+char peekChar(lexer *l);
+token_type lookupTokenType(char *ident);
 
-enum token_type NextToken(struct lexer *Lexer) {
-  enum token_type Token;
+token_type NextToken(lexer *Lexer) {
+  token_type Token;
   skipWhitespace(Lexer);
 
   char c = *Lexer->ParseLocation;
@@ -77,7 +77,7 @@ enum token_type NextToken(struct lexer *Lexer) {
 }
 
 
-void LexerInit(struct lexer *Lexer, const char *Input,
+void LexerInit(lexer *Lexer, const char *Input,
                const char *InputEndLocation, char *StringStore,
                unsigned int StringStoreSize) {
   Lexer->Input = Input;
@@ -87,19 +87,19 @@ void LexerInit(struct lexer *Lexer, const char *Input,
   Lexer->StringStorageLength = StringStoreSize;
 }
 
-void skipWhitespace(struct lexer *l) {
+void skipWhitespace(lexer *l) {
   while (isspace(*l->ParseLocation)) {
     readChar(l);
   }
 }
 
-void readChar(struct lexer *l) {
+void readChar(lexer *l) {
   if (l->ParseLocation != l->EndLocation) {
     l->ParseLocation++;
   }
 }
 
-char peekChar(struct lexer *l) {
+char peekChar(lexer *l) {
   if (l->ParseLocation + 1!= l->EndLocation) {
     return *(l->ParseLocation + 1);
   } else {
@@ -107,7 +107,7 @@ char peekChar(struct lexer *l) {
   }
 }
 
-void readIdentifier(struct lexer *Lexer) {
+void readIdentifier(lexer *Lexer) {
   char *String = Lexer->StringStorage;
   while (isalpha(*Lexer->ParseLocation)) {
     *String++ = *Lexer->ParseLocation++;
@@ -117,7 +117,7 @@ void readIdentifier(struct lexer *Lexer) {
   Lexer->StringStorage = String;
 }
 
-enum token_type lookupTokenType(char *ident) {
+token_type lookupTokenType(char *ident) {
   if (0 == strcmp(ident, "var")) {
     return TOKEN_VAR;
   } else if (0 == strcmp(ident, "fn")) {
