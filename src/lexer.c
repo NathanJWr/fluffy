@@ -13,8 +13,8 @@ token_type NextToken(lexer *Lexer) {
     return TOKEN_END;
   }
 
-  c = *Lexer->ParseLocation;
   skipWhitespace(Lexer);
+  c = *Lexer->ParseLocation;
 
   switch (c) {
   default: {
