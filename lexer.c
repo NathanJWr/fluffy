@@ -25,7 +25,7 @@ enum token_type NextToken(struct lexer *Lexer) {
     Token = TOKEN_LT;
   } break;
   case '+': {
-    Token = TOKEN_ASSIGN;
+    Token = TOKEN_PLUS;
   } break;
   case '-': {
     Token = TOKEN_MINUS;
