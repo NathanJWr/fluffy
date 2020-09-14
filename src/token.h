@@ -36,11 +36,16 @@
   X(FALSE)                                                                     \
   X(IF)                                                                        \
   X(ELSE)                                                                      \
-  X(RETURN)
+  XX(RETURN)
 
 #define X(name) TOKEN_##name,
+#define XX(name) TOKEN_##name
 typedef enum { TOKEN_TYPE_LIST } token_type;
 #undef X
+#undef XX
 
 #define X(name) #name,
-const char *TokenType[] = { TOKEN_TYPE_LIST };
+#define XX(name) #name
+const char *TokenType[] = {TOKEN_TYPE_LIST};
+#undef X
+#undef XX

@@ -6,9 +6,10 @@ token_type lookupTokenType(char *ident);
 
 token_type NextToken(lexer *Lexer) {
   token_type Token;
+  char c = *Lexer->ParseLocation;
+
   skipWhitespace(Lexer);
 
-  char c = *Lexer->ParseLocation;
   switch (c) {
   default: {
     if (isalpha(c)) {
