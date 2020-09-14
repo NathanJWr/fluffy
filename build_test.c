@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <stdarg.h>
 #include <assert.h>
 
 /* project includes */
@@ -12,5 +13,5 @@
 
 /* project c files */
 #include "src/lexer.c"
-#include "test/tests.c"
+#include "test/lexerTests.c"
 #include "test/main.c"

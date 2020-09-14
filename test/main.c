@@ -1,6 +1,6 @@
 
 int main() {
     printf("Executing tests.\n");
-    testIdentifier();
+    testLexer("<hello >", 3, TOKEN_LT, TOKEN_IDENT, "hello", TOKEN_GT);
     return 0;
 }
