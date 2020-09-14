@@ -26,6 +26,9 @@ int main() {
 
     LexerInit(&Lexer, ReadBuffer, ReadBuffer + GetlineSize, StringStore, StringStoreSize);
     Token = NextToken(&Lexer);
-    printf("Token type: %s\n", TokenType[Token]);
+    while (Token != TOKEN_END) {
+      printf("Token type: %s\n", TokenType[Token]);
+      Token = NextToken(&Lexer);
+    }
   }
 }
