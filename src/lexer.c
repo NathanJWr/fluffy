@@ -1,19 +1,28 @@
 void skipWhitespace(lexer *l);
 void readChar(lexer *l);
 token_type readIdentifier(lexer *Lexer);
+void readInteger(lexer *Lexer);
 char peekChar(lexer *l);
 token_type lookupTokenType(char *ident);
 
 token_type NextToken(lexer *Lexer) {
   token_type Token;
-  char c = *Lexer->ParseLocation;
+  char c;
 
+  if (Lexer->ParseLocation == Lexer->EndLocation) {
+    return TOKEN_END;
+  }
+
+  c = *Lexer->ParseLocation;
   skipWhitespace(Lexer);
 
   switch (c) {
   default: {
     if (isalpha(c)) {
       Token = readIdentifier(Lexer);
+    } else if (isdigit(c)) {
+      readInteger(Lexer);
+      Token = TOKEN_INT;
     } else {
       Token = TOKEN_ILLEGAL;
     }
@@ -70,6 +79,9 @@ token_type NextToken(lexer *Lexer) {
       Token = TOKEN_ASSIGN;
     }
   } break;
+  case '\0': {
+    Token = TOKEN_END;
+  }
   } /* end switch */
 
   readChar(Lexer);
@@ -111,7 +123,8 @@ token_type readIdentifier(lexer *Lexer) {
   /* construct a string in the string storage memory */
   char *String = Lexer->StringStorage;
   char *StringEnd = Lexer->StringStorage;
-  while (isalpha(*Lexer->ParseLocation)) {
+  while (isalpha(*Lexer->ParseLocation) &&
+         Lexer->ParseLocation != Lexer->EndLocation) {
     *StringEnd++ = *Lexer->ParseLocation++;
   }
   *StringEnd++ = '\0';
@@ -146,5 +159,33 @@ token_type lookupTokenType(char *ident) {
     return TOKEN_RETURN;
   } else {
     return TOKEN_IDENT;
+  }
+}
+
+void readInteger(lexer *Lexer) {
+  /* construct an integer in the string storage memory */
+  char *Int = Lexer->StringStorage;
+  char *IntEnd = Lexer->StringStorage;
+  char *End;
+  while (isdigit(*Lexer->ParseLocation) &&
+         Lexer->ParseLocation != Lexer->EndLocation) {
+    *IntEnd++ = *Lexer->ParseLocation++;
+  }
+  *IntEnd++ = '\0';
+
+  /* convert integer string into an integer */
+  errno = 0;
+  Lexer->Integer = strtol(Int, &End, 10);
+
+  /* Check for various possible errors */
+  if ((errno == ERANGE && (Lexer->Integer == LONG_MAX || Lexer->Integer == LONG_MIN)) ||
+      (errno != 0 && Lexer->Integer == 0)) {
+    perror("failed integer conversion");
+    exit(EXIT_FAILURE);
+  }
+
+  if (End == Int) {
+    fprintf(stderr, "no digits were found\n");
+    exit(EXIT_FAILURE);
   }
 }
