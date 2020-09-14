@@ -127,6 +127,7 @@ token_type readIdentifier(lexer *Lexer) {
          Lexer->ParseLocation != Lexer->EndLocation) {
     *StringEnd++ = *Lexer->ParseLocation++;
   }
+  Lexer->ParseLocation--;
   *StringEnd++ = '\0';
 
   Token = lookupTokenType(String);
@@ -171,6 +172,7 @@ void readInteger(lexer *Lexer) {
          Lexer->ParseLocation != Lexer->EndLocation) {
     *IntEnd++ = *Lexer->ParseLocation++;
   }
+  Lexer->ParseLocation--;
   *IntEnd++ = '\0';
 
   /* convert integer string into an integer */
