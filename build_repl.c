@@ -6,9 +6,9 @@
 #include <stddef.h>
 
 /* project includes */
-#include "token.h"
-#include "lexer.h"
+#include "src/token.h"
+#include "src/lexer.h"
 
 /* project c files */
-#include "lexer.c"
-#include "repl.c"
+#include "src/lexer.c"
+#include "src/repl.c"

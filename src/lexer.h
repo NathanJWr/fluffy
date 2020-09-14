@@ -1,4 +1,4 @@
-struct lexer {
+typedef struct {
   /* lexer internal variables */
   const char *Input;
   char *ParseLocation;
@@ -15,9 +15,9 @@ struct lexer {
   /* possible variables */
   char *String;
   long Integer;
-};
+} lexer;
 
-void LexerInit(struct lexer *Lexer, const char *Input,
+void LexerInit(lexer *Lexer, const char *Input,
                const char *InputEndLocation, char *StringStore,
                unsigned int StringStoreSize);
-enum token_type NextToken(struct lexer *l);
+token_type NextToken(lexer *l);

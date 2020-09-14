@@ -39,7 +39,7 @@
   X(RETURN)
 
 #define X(name) TOKEN_##name,
-enum token_type { TOKEN_TYPE_LIST };
+typedef enum { TOKEN_TYPE_LIST } token_type;
 #undef X
 
 #define X(name) #name,
