@@ -1,6 +1,6 @@
 int isDebug = 0;
 
-void printLog(const char*);
+void printLog(char*);
 
 /**
  * If we expect an identifier, then also assert the Lexer's output is equal to the string input.
@@ -11,7 +11,7 @@ void testLexer(const char *str, ...) {
     unsigned int StringStoreSize = 0x10000;
     char *StringStore = malloc(StringStoreSize);
     token_type type, expectedType;
-    int i;
+    int i = 0;
     char* expectedString;
     long expectedInt;
     char* debugLine;
@@ -21,35 +21,28 @@ void testLexer(const char *str, ...) {
 
     LexerInit(&Lexer, &str[0], &str[strlen(str)], StringStore, StringStoreSize);
 
-    debugLine = malloc(0x1000);
+    debugLine = calloc(1, 0x1000);
     sprintf(debugLine, "%s", str);
     printLog(debugLine);
-    free(debugLine);
     printLog("================================");
     while(1) {
         expectedType = va_arg(expectedTypes, token_type);
         type = NextToken(&Lexer);
-        debugLine = malloc(0x1000);
         sprintf(debugLine, "  [%d]: %s ? %s", i+1, TokenType[expectedType], TokenType[type]);
         printLog(debugLine);
-        free(debugLine);
         assert(type == expectedType);
         switch (expectedType) {
             case TOKEN_IDENT: {
                 expectedString = va_arg(expectedTypes, char*);
-                debugLine = malloc(0x1000);
                 sprintf(debugLine, "   | %s ? %s", expectedString, Lexer.String);
                 printLog(debugLine);
-                free(debugLine);
                 assert(0 == strcmp(Lexer.String, expectedString));
                 break;
             }
             case TOKEN_INT: {
                 expectedInt = va_arg(expectedTypes, long);
-                debugLine = malloc(0x1000);
                 sprintf(debugLine, "   | %ld ? %ld", expectedInt, Lexer.Integer);
                 printLog(debugLine);
-                free(debugLine);
                 assert(Lexer.Integer == expectedInt);
                 break;
             }
@@ -65,10 +58,15 @@ void testLexer(const char *str, ...) {
     }
     printLog("================================");
     va_end(expectedTypes);
+
+    /* only now should we free any buffers we've allocated */
+    free(debugLine);
+    free(StringStore); 
 }
 
-void printLog(const char* line) {
+void printLog(char* line) {
     if(isDebug) {
         printf("%s\n", line);
     }
+    line[0] = '\0'; /* reset the buffer so new message can be put in it */
 }
