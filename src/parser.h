@@ -8,7 +8,16 @@ typedef struct {
   uint8_t *AstNodesEnd;
   size_t AstNodesSize;
   size_t AstNodesIndex;
+
+  /* Token information */
+  lexer *Lexer;
+
+  token_type CurToken;
+  char *CurString;
+  long CurInteger;
+
+  token_type PeekToken;
 } parser;
 
-void ParserInit(parser *Parser);
-ast_program ParseProgram(parser *Parser, lexer *Lexer);
+void ParserInit(parser *Parser, lexer *Lexer);
+ast_program ParseProgram(parser *Parser);
