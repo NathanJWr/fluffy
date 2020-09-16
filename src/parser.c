@@ -11,123 +11,66 @@ enum parser_precedence {
   PRECEDENCE_PREFIX,
   PRECEDENCE_CALL
 };
+/* allocating functions */
 void initializeNodeArray(parser *P, size_t Size);
-
-/* will insert the node into a flat array
- * NOTE(Nathan): This operation can resize the array and invalidate pointers
- * to any node contained within it */
-size_t insertIntoArrayOfNodes(parser *Parser, ast_base *Node);
-
-/* Returns a pointer to a particular node based in the index.
- * This is most likely pretty slow because of the variable sized nodes
- * and having to increment into the array based on those variable sizes */
-ast_base *getAstNodeFromArray(uint8_t *Array, size_t Index);
+ast_base *createNode(parser *P, unsigned int Size, token_type Type);
 
 /* basic parse functions */
 void nextToken(parser *Parser);
-void parseStatement(parser *Parser);
-void parseExpressionStatement(parser *Parser);
-void parseExpression(parser *Parser, unsigned int Precedence);
+ast_base *parseStatement(parser *Parser);
+ast_base *parseExpressionStatement(parser *Parser);
+ast_base *parseExpression(parser *Parser, unsigned int Precedence);
 
 /* Prefix parsing function */
-typedef size_t (*PrefixParseFunction)(parser *);
+typedef ast_base *(*PrefixParseFunction)(parser *);
 PrefixParseFunction findPrefixParseFunction(token_type Token);
-size_t parseIdentifier(parser *Parser);
 
-void debugPrintAstNodes(parser *Parser);
-void debugPrintAstNode(ast_base *Node);
+ast_base *parseIdentifier(parser *Parser);
+
+void debugPrintAstNode(ast_base *restrict Node);
 
 void ParserInit(parser *Parser, lexer *Lexer) {
-  initializeNodeArray(Parser, 8);
-  Parser->AstNodesIndex = 0;
-  Parser->Lexer = Lexer;
-
   /* Get the first two tokens so CurToken and PeekToken can be populated */
+  Parser->Lexer = Lexer;
   nextToken(Parser);
   nextToken(Parser);
 }
 
-void ParserDelete(parser *Parser) { free(Parser->AstNodes); }
+void ParserDelete(parser *Parser) {}
 
 ast_program ParseProgram(parser *Parser) {
   /* initialize the AstNodes to store nodes */
+  ast_base *ProgramNode = createNode(Parser, sizeof(ast_program), AST_PROGRAM);
   ast_program Program;
-  size_t ProgramIndex;
-  size_t ProgramStatementCount = 0;
-
-  Program.Base.Size = sizeof(ast_program);
-  Program.Base.Type = AST_PROGRAM;
-  ProgramIndex = insertIntoArrayOfNodes(Parser, (ast_base *)&Program);
+  memcpy(&Program, ProgramNode, sizeof(ast_program));
 
   while (Parser->CurToken != TOKEN_END) {
-    parseStatement(Parser);
+    ast_base *Stmt = parseStatement(Parser);
+    debugPrintAstNode(Stmt);
     nextToken(Parser);
-    ProgramStatementCount++;
   }
 
-  /* make sure to set the program statement count in memory */
-  ((ast_program *)getAstNodeFromArray(Parser->AstNodes, ProgramIndex))
-      ->StatementsLength = ProgramStatementCount;
-
-  debugPrintAstNodes(Parser);
+  memcpy(ProgramNode, &Program, sizeof(ast_program));
 }
 
-void initializeNodeArray(parser *P, size_t Size) {
-  P->AstNodes = malloc(Size);
-  P->AstNodesPos = P->AstNodes;
-  P->AstNodesEnd = P->AstNodes + Size;
-  P->AstNodesSize = Size;
-}
-
-size_t insertIntoArrayOfNodes(parser *Parser, ast_base *Node) {
-  /* resize the array if needed */
-  if (Parser->AstNodesEnd < Parser->AstNodesPos + Node->Size) {
-    size_t NewSize = Parser->AstNodesSize * 2;
-    uint8_t *A = realloc(Parser->AstNodes, NewSize);
-    if (A) {
-      /* change out all the pointers that are tracking positions */
-      Parser->AstNodes = A;
-      Parser->AstNodesPos = A + Parser->AstNodesSize;
-      Parser->AstNodesEnd = A + NewSize;
-
-      /* actually change the ast nodes size */
-      Parser->AstNodesSize = NewSize;
-    }
-  }
-
-  /* insert Node into the array */
-  memcpy(Parser->AstNodesPos, Node, Node->Size);
-  Parser->AstNodesPos += Node->Size;
-  return Parser->AstNodesIndex++;
-}
-
-ast_base *getAstNodeFromArray(uint8_t *Array, size_t Index) {
-  unsigned int I = 0;
-  while (I != Index) {
-    size_t Size = ((ast_base *)Array)->Size;
-    Array += Size;
-    I++;
-  }
-  return (ast_base *)Array;
-}
-
-void parseStatement(parser *Parser) {
+ast_base *parseStatement(parser *Parser) {
   switch (Parser->CurToken) {
   default:
-    parseExpressionStatement(Parser);
+    return parseExpressionStatement(Parser);
   }
 }
 
-void parseExpressionStatement(parser *Parser) {
-  parseExpression(Parser, PRECEDENCE_LOWEST);
+ast_base *parseExpressionStatement(parser *Parser) {
+  ast_base *Expr = parseExpression(Parser, PRECEDENCE_LOWEST);
   if (Parser->PeekToken == TOKEN_SEMICOLON) {
     nextToken(Parser);
   }
+  return Expr;
 }
 
-void parseExpression(parser *Parser, unsigned int Precedence) {
+ast_base *parseExpression(parser *Parser, unsigned int Precedence) {
   PrefixParseFunction PrefixFn = findPrefixParseFunction(Parser->CurToken);
-  PrefixFn(Parser);
+  return PrefixFn(Parser);
 }
 
 void nextToken(parser *Parser) {
@@ -147,32 +90,36 @@ PrefixParseFunction findPrefixParseFunction(token_type Token) {
   }
 }
 
-size_t parseIdentifier(parser *Parser) {
+ast_base *parseIdentifier(parser *restrict Parser) {
+  ast_base *Node = createNode(Parser, sizeof(ast_identifier), AST_IDENTIFIER);
   ast_identifier Ident;
-  Ident.Base.Type = AST_IDENTIFIER;
-  Ident.Base.Size = sizeof(ast_identifier);
+
+  /* Set the identifier string value */
+  memcpy(&Ident, Node, sizeof(ast_identifier));
   Ident.Value = Parser->CurString;
-  return insertIntoArrayOfNodes(Parser, (ast_base *)&Ident);
+  memcpy(Node, &Ident, sizeof(ast_identifier));
+
+  return Node;
 }
 
-void debugPrintAstNodes(parser *Parser) {
-  size_t Index = 0;
-  uint8_t *Node = Parser->AstNodes;
-  while (Index < Parser->AstNodesIndex) {
-    debugPrintAstNode((ast_base *)Node);
-    Node += ((ast_base *)Node)->Size;
-    Index++;
-  }
-}
-
-void debugPrintAstNode(ast_base *Node) {
+void debugPrintAstNode(ast_base *restrict Node) {
   switch (Node->Type) {
   case AST_IDENTIFIER: {
+    ast_identifier Ident;
+    memcpy(&Ident, Node, sizeof(ast_identifier));
     printf("AST_IDENTIFIER: %s\n", ((ast_identifier *)Node)->Value);
   } break;
   case AST_PROGRAM: {
-    printf("AST_FUNCTION: %d statements\n",
-           ((ast_program *)Node)->StatementsLength);
+    ast_program Program;
+    memcpy(&Program, Node, sizeof(ast_program));
+    printf("AST_FUNCTION\n");
   } break;
   }
+}
+
+ast_base *createNode(parser *P, unsigned int Size, token_type Type) {
+  ast_base *Ret = malloc(Size);
+  Ret->Size = Size;
+  Ret->Type = Type;
+  return Ret;
 }

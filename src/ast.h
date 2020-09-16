@@ -12,8 +12,7 @@ typedef struct {
 typedef struct {
   ast_base Base;
 
-  unsigned int StatementsLength;
-  /* Statements are contiguosly stored in memory after the program ast data */
+  ast_base **Statements;
 } ast_program;
 
 typedef struct {
