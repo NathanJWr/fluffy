@@ -4,6 +4,7 @@ token_type readIdentifier(lexer *Lexer);
 void readInteger(lexer *Lexer);
 char peekChar(lexer *l);
 token_type lookupTokenType(char *ident);
+void readString(lexer *Lexer);
 
 token_type NextToken(lexer *Lexer) {
   token_type Token;
@@ -79,9 +80,13 @@ token_type NextToken(lexer *Lexer) {
       Token = TOKEN_ASSIGN;
     }
   } break;
+  case '"': {
+    readString(Lexer);
+    Token = TOKEN_STRING;
+  } break;
   case '\0': {
     Token = TOKEN_END;
-  }
+  } break;
   } /* end switch */
 
   readChar(Lexer);
@@ -115,6 +120,24 @@ char peekChar(lexer *l) {
   } else {
     return 0;
   }
+}
+
+void readString(lexer *Lexer) {
+  char *String = Lexer->StringStorage;
+  char *StringEnd = Lexer->StringStorage;
+
+  Lexer->ParseLocation++; /* skip the first '"' */
+  /* Read until we reach the ending \" */
+  while (*Lexer->ParseLocation != '"') {
+    *StringEnd++ = *Lexer->ParseLocation++;
+  }
+  *StringEnd++ = '\0';
+
+  /* Move string storage ahead by the size of the string we just read */
+  Lexer->StringStorage = StringEnd;
+
+  /* Set the public string variable to what we just read */
+  Lexer->String = String;
 }
 
 token_type readIdentifier(lexer *Lexer) {
@@ -180,7 +203,8 @@ void readInteger(lexer *Lexer) {
   Lexer->Integer = strtol(Int, &End, 10);
 
   /* Check for various possible errors */
-  if ((errno == ERANGE && (Lexer->Integer == LONG_MAX || Lexer->Integer == LONG_MIN)) ||
+  if ((errno == ERANGE &&
+       (Lexer->Integer == LONG_MAX || Lexer->Integer == LONG_MIN)) ||
       (errno != 0 && Lexer->Integer == 0)) {
     perror("failed integer conversion");
     exit(EXIT_FAILURE);
