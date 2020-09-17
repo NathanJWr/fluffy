@@ -40,17 +40,14 @@ void ParserDelete(parser *Parser) {}
 
 ast_program ParseProgram(parser *Parser) {
   /* initialize the AstNodes to store nodes */
-  ast_base *ProgramNode = createNode(Parser, sizeof(ast_program), AST_PROGRAM);
-  ast_program Program;
-  memcpy(&Program, ProgramNode, sizeof(ast_program));
+  ast_program *ProgramNode =
+      (ast_program *)createNode(Parser, sizeof(ast_program), AST_PROGRAM);
 
   while (Parser->CurToken != TOKEN_END) {
     ast_base *Stmt = parseStatement(Parser);
     debugPrintAstNode(Stmt);
     nextToken(Parser);
   }
-
-  memcpy(ProgramNode, &Program, sizeof(ast_program));
 }
 
 ast_base *parseStatement(parser *Parser) {
@@ -105,13 +102,9 @@ ast_base *parseIdentifier(parser *restrict Parser) {
 void debugPrintAstNode(ast_base *restrict Node) {
   switch (Node->Type) {
   case AST_IDENTIFIER: {
-    ast_identifier Ident;
-    memcpy(&Ident, Node, sizeof(ast_identifier));
     printf("AST_IDENTIFIER: %s\n", ((ast_identifier *)Node)->Value);
   } break;
   case AST_PROGRAM: {
-    ast_program Program;
-    memcpy(&Program, Node, sizeof(ast_program));
     printf("AST_FUNCTION\n");
   } break;
   }
