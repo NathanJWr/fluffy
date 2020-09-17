@@ -7,9 +7,9 @@
 #include <limits.h>
 #include <errno.h>
 #include <inttypes.h>
-#include <stdbool.h>
 
 /* project includes */
+#include "src/defines.h"
 #include "src/stretchy_array.h"
 #include "src/token.h"
 #include "src/lexer.h"
@@ -17,6 +17,7 @@
 #include "src/parser.h"
 
 /* project c files */
+#include "src/ast.c"
 #include "src/parser.c"
 #include "src/lexer.c"
 #include "src/repl.c"

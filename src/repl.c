@@ -22,12 +22,15 @@ int main() {
 
   while (1) {
     token_type Token;
+    ast_program *Program;
+
     printf(">> ");
     ReadLine(ReadBuffer, &GetlineSize, stdin);
 
-    LexerInit(&Lexer, ReadBuffer, ReadBuffer + GetlineSize, StringStore, StringStoreSize);
-    ParserInit(&Parser, &Lexer); 
-    ParseProgram(&Parser);
-    ParserDelete(&Parser);
+    LexerInit(&Lexer, ReadBuffer, ReadBuffer + GetlineSize, StringStore,
+              StringStoreSize);
+    ParserInit(&Parser, &Lexer);
+    Program = ParseProgram(&Parser);
+    AstNodeDelete((ast_base *)Program);
   }
 }

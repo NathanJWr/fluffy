@@ -10,4 +10,5 @@ typedef struct {
 } parser;
 
 void ParserInit(parser *Parser, lexer *Lexer);
-ast_program ParseProgram(parser *Parser);
+ast_program *ParseProgram(parser *Parser);
+void ProgramDelete(ast_program *Program);

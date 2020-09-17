@@ -6,7 +6,7 @@ typedef struct {
 #define ARRAY_WITH_MEMCPY
 #define arrayHeader(a) ((char *)a) - sizeof(stretchy_array_header)
 
-static inline bool arrayFull(void *Array) {
+bool arrayFull(void *Array) {
   if (Array) {
 #ifdef ARRAY_WITH_MEMCPY
     stretchy_array_header Header;
@@ -21,7 +21,7 @@ static inline bool arrayFull(void *Array) {
   return true;
 }
 
-static inline void *arrayGrow(void *Array, unsigned int ItemSize) {
+void *arrayGrow(void *Array, unsigned int ItemSize) {
 #ifdef ARRAY_WITH_MEMCPY
   stretchy_array_header Header;
   char *ArrayHeader;
@@ -61,7 +61,7 @@ static inline void *arrayGrow(void *Array, unsigned int ItemSize) {
 #endif
 }
 
-static inline size_t ArraySize(void *Array) {
+size_t ArraySize(void *Array) {
   if (Array) {
 #ifdef ARRAY_WITH_MEMCPY
     stretchy_array_header Header;
@@ -75,19 +75,21 @@ static inline size_t ArraySize(void *Array) {
   return 0;
 }
 
-static inline void ArrayFree(void *Array) {
-  (Array) ? free(arrayHeader(Array)) : 0;
+void ArrayFree(void *Array) {
+  if (Array) {
+    free(arrayHeader(Array));
+  }
 }
 
 #ifdef ARRAY_WITH_MEMCPY
 #define ArrayPush(a, item)                                                     \
-  ({                                                                           \
+  {                                                                            \
+    stretchy_array_header ___Header;                                           \
     arrayFull(a) ? a = arrayGrow(a, sizeof(*a)) : 0;                           \
-    stretchy_array_header Header;                                              \
-    memcpy(&Header, arrayHeader(a), sizeof(stretchy_array_header));            \
-    a[Header.Size++] = item;                                                   \
-    memcpy(arrayHeader(a), &Header, sizeof(stretchy_array_header));            \
-  })
+    memcpy(&___Header, arrayHeader(a), sizeof(stretchy_array_header));         \
+    a[___Header.Size++] = item;                                                \
+    memcpy(arrayHeader(a), &___Header, sizeof(stretchy_array_header));         \
+  }
 #endif
 
 #ifdef ARRAY_WITH_CASTS
