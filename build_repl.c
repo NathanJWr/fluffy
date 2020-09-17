@@ -7,8 +7,10 @@
 #include <limits.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <stdbool.h>
 
 /* project includes */
+#include "src/stretchy_array.h"
 #include "src/token.h"
 #include "src/lexer.h"
 #include "src/ast.h"
