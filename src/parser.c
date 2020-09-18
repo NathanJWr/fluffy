@@ -26,6 +26,7 @@ ast_base *parseExpression(parser *Parser, unsigned int Precedence);
 /* Prefix parsing function */
 typedef ast_base *(*PrefixParseFunction)(parser *);
 PrefixParseFunction findPrefixParseFunction(token_type Token);
+ast_base *parsePrefixExpression(parser *Parser);
 ast_base *parseIdentifier(parser *Parser);
 ast_base *parseIntegerLiteral(parser *Parser);
 
@@ -108,6 +109,9 @@ PrefixParseFunction findPrefixParseFunction(token_type Token) {
     return parseIdentifier;
   case TOKEN_INT:
     return parseIntegerLiteral;
+  case TOKEN_BANG:
+  case TOKEN_MINUS:
+    return parsePrefixExpression;
   default:
     printf("no prefix parse function for (%s) found\n", TokenType[Token]);
     return NULL;
@@ -132,12 +136,22 @@ ast_base *parseInfixExpression(parser *Parser, ast_base *Left) {
 
   memcpy(&Infix, Node, sizeof(ast_infix_expression));
 
+  Infix.Operation = Parser->CurToken;
   Infix.Left = Left;
   nextToken(Parser);
   Infix.Right = parseExpression(Parser, Precedence);
 
   memcpy(Node, &Infix, sizeof(ast_infix_expression));
   return Node;
+}
+
+ast_base *parsePrefixExpression(parser *Parser) {
+  ast_prefix_expression *Prefix = (ast_prefix_expression *)createNode(
+      Parser, sizeof(ast_prefix_expression), AST_PREFIX_EXPRESSION);
+  Prefix->Operation = Parser->CurToken;
+  nextToken(Parser);
+  Prefix->Right = parseExpression(Parser, PRECEDENCE_PREFIX);
+  return (ast_base *)Prefix;
 }
 
 ast_base *parseIdentifier(parser *Parser) {
@@ -161,14 +175,11 @@ ast_base *parseIntegerLiteral(parser *Parser) {
 }
 
 void debugPrintAstNode(ast_base *Node) {
-  /* print the node ast type */
-  printf("%s: ", AstType[Node->Type]);
-
   switch (Node->Type) {
   case AST_IDENTIFIER: {
     ast_identifier Ident;
     memcpy(&Ident, Node, sizeof(ast_identifier));
-    printf("%s\n", Ident.Value);
+    printf("%s", Ident.Value);
   } break;
   case AST_PROGRAM: {
     ast_program Program;
@@ -176,22 +187,54 @@ void debugPrintAstNode(ast_base *Node) {
     unsigned int i;
     memcpy(&Program, Node, sizeof(ast_program));
 
-    printf("\n");
     StatementsSize = ArraySize(Program.Statements);
     for (i = 0; i < StatementsSize; i++) {
       debugPrintAstNode(Program.Statements[i]);
     }
+    printf("\n");
   } break;
   case AST_INFIX_EXPRESSION: {
     ast_infix_expression *Infix = (ast_infix_expression *)Node;
-    printf("\nleft: ");
+    printf("(");
     debugPrintAstNode(Infix->Left);
-    printf("right: ");
+
+    switch (Infix->Operation) {
+    case TOKEN_PLUS:
+      printf("+");
+      break;
+    case TOKEN_MINUS:
+      printf("-");
+      break;
+    case TOKEN_SLASH:
+      printf("/");
+      break;
+    case TOKEN_ASTERISK:
+      printf("*");
+      break;
+    default:
+      break;
+    }
+
     debugPrintAstNode(Infix->Right);
-  }
-  case AST_INTEGER_LITERAL: {
-    printf("%ld\n", ((ast_integer_literal *)Node)->Integer);
+    printf(")");
   } break;
+  case AST_INTEGER_LITERAL: {
+    printf("%ld", ((ast_integer_literal *)Node)->Integer);
+  } break;
+  case AST_PREFIX_EXPRESSION: {
+    ast_prefix_expression *Prefix = (ast_prefix_expression *)Node;
+    switch (Prefix->Operation) {
+    case TOKEN_BANG:
+      printf("!");
+      break;
+    case TOKEN_MINUS:
+      printf("-");
+      break;
+    default:
+      break;
+    }
+    debugPrintAstNode(Prefix->Right);
+  }
   default:
     printf("\n");
   }
