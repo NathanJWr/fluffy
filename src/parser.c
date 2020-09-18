@@ -30,6 +30,7 @@ ast_base *parsePrefixExpression(parser *Parser);
 ast_base *parseIdentifier(parser *Parser);
 ast_base *parseIntegerLiteral(parser *Parser);
 ast_base *parseBoolean(parser *Parser);
+ast_base *parseGroupedExpression(parser *Parser);
 
 /* Infix parsing function */
 typedef ast_base *(*InfixParseFunction)(parser *, ast_base *left);
@@ -116,6 +117,8 @@ PrefixParseFunction findPrefixParseFunction(token_type Token) {
   case TOKEN_TRUE:
   case TOKEN_FALSE:
     return parseBoolean;
+  case TOKEN_LPAREN:
+    return parseGroupedExpression;
   default:
     printf("no prefix parse function for (%s) found\n", TokenType[Token]);
     return NULL;
@@ -125,7 +128,15 @@ PrefixParseFunction findPrefixParseFunction(token_type Token) {
 InfixParseFunction findInfixParseFunction(token_type Token) {
   switch (Token) {
   case TOKEN_PLUS:
+  case TOKEN_MINUS:
+  case TOKEN_SLASH:
+  case TOKEN_ASTERISK:
+  case TOKEN_EQ:
+  case TOKEN_NOT_EQ:
+  case TOKEN_LT:
+  case TOKEN_GT:
     return parseInfixExpression;
+
   default:
     printf("no prefix parse function for (%s) found\n", TokenType[Token]);
     return NULL;
@@ -187,6 +198,19 @@ ast_base *parseBoolean(parser *Parser) {
   return (ast_base *)Boolean;
 }
 
+ast_base *parseGroupedExpression(parser *Parser) {
+  ast_base *Expr;
+  nextToken(Parser);
+
+  Expr = parseExpression(Parser, PRECEDENCE_LOWEST);
+  if (Parser->PeekToken != TOKEN_RPAREN) {
+    return NULL;
+  }
+  nextToken(Parser);
+
+  return Expr;
+}
+
 void debugPrintAstNode(ast_base *Node) {
   switch (Node->Type) {
   case AST_IDENTIFIER: {
@@ -223,6 +247,18 @@ void debugPrintAstNode(ast_base *Node) {
       break;
     case TOKEN_ASTERISK:
       printf("*");
+      break;
+    case TOKEN_GT:
+      printf(">");
+      break;
+    case TOKEN_LT:
+      printf("<");
+      break;
+    case TOKEN_EQ:
+      printf("==");
+      break;
+    case TOKEN_NOT_EQ:
+      printf("!=");
       break;
     default:
       break;
