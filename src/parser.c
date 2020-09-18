@@ -29,6 +29,7 @@ PrefixParseFunction findPrefixParseFunction(token_type Token);
 ast_base *parsePrefixExpression(parser *Parser);
 ast_base *parseIdentifier(parser *Parser);
 ast_base *parseIntegerLiteral(parser *Parser);
+ast_base *parseBoolean(parser *Parser);
 
 /* Infix parsing function */
 typedef ast_base *(*InfixParseFunction)(parser *, ast_base *left);
@@ -112,6 +113,9 @@ PrefixParseFunction findPrefixParseFunction(token_type Token) {
   case TOKEN_BANG:
   case TOKEN_MINUS:
     return parsePrefixExpression;
+  case TOKEN_TRUE:
+  case TOKEN_FALSE:
+    return parseBoolean;
   default:
     printf("no prefix parse function for (%s) found\n", TokenType[Token]);
     return NULL;
@@ -174,6 +178,15 @@ ast_base *parseIntegerLiteral(parser *Parser) {
   return (ast_base *)Integer;
 }
 
+ast_base *parseBoolean(parser *Parser) {
+  ast_boolean *Boolean =
+      (ast_boolean *)createNode(Parser, sizeof(ast_boolean), AST_BOOLEAN);
+
+  Boolean->Value = Parser->CurToken == TOKEN_TRUE;
+
+  return (ast_base *)Boolean;
+}
+
 void debugPrintAstNode(ast_base *Node) {
   switch (Node->Type) {
   case AST_IDENTIFIER: {
@@ -234,7 +247,11 @@ void debugPrintAstNode(ast_base *Node) {
       break;
     }
     debugPrintAstNode(Prefix->Right);
-  }
+  } break;
+  case AST_BOOLEAN: {
+    ast_boolean *Boolean = (ast_boolean *)Node;
+    (Boolean->Value) ? printf("true") : printf("false");
+  } break;
   default:
     printf("\n");
   }

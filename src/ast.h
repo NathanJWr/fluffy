@@ -4,6 +4,7 @@
   X(AST_IDENTIFIER)                                                            \
   X(AST_INTEGER_LITERAL)                                                       \
   X(AST_PREFIX_EXPRESSION)                                                     \
+  X(AST_BOOLEAN)                                                               \
   XX(AST_INFIX_EXPRESSION)
 
 #define X(name) name,
@@ -40,6 +41,12 @@ typedef struct {
 
   long Integer;
 } ast_integer_literal;
+
+typedef struct {
+  ast_base Base;
+
+  bool Value;
+} ast_boolean;
 
 typedef struct {
   ast_base Base;
