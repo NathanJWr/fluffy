@@ -1,13 +1,15 @@
 void AstProgramDelete(ast_program *Program);
-void AstIdentifierDelete(ast_identifier *Ident);
+void AstBlockDelete(ast_block_statement *Block);
 
 void AstNodeDelete(ast_base *Node) {
   switch (Node->Type) {
   case AST_PROGRAM:
     AstProgramDelete((ast_program *)Node);
     break;
-  case AST_IDENTIFIER:
-    AstIdentifierDelete((ast_identifier *)Node);
+  case AST_BLOCK_STATEMENT:
+    AstBlockDelete((ast_block_statement *)Node);
+  default:
+    free(Node);
     break;
   }
 }
@@ -22,4 +24,12 @@ void AstProgramDelete(ast_program *Program) {
   free(Program);
 }
 
-void AstIdentifierDelete(ast_identifier *Ident) { free(Ident); }
+void AstBlockDelete(ast_block_statement *Block) {
+  unsigned int StatementsSize = ArraySize(Block->Statements);
+  unsigned int i;
+  for (i = 0; i < StatementsSize; i++) {
+    AstNodeDelete(Block->Statements[i]);
+  }
+  ArrayFree(Block->Statements);
+  free(Block);
+}

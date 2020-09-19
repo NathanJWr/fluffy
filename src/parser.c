@@ -33,11 +33,15 @@ ast_base *parseIdentifier(parser *Parser);
 ast_base *parseIntegerLiteral(parser *Parser);
 ast_base *parseBoolean(parser *Parser);
 ast_base *parseGroupedExpression(parser *Parser);
+ast_base *parseIfExpression(parser *Parser);
 
 /* Infix parsing function */
 typedef ast_base *(*InfixParseFunction)(parser *, ast_base *left);
 InfixParseFunction findInfixParseFunction(token_type Token);
 ast_base *parseInfixExpression(parser *Parser, ast_base *left);
+
+/* Helper parsing function */
+ast_base *parseBlockStatement(parser *Parser);
 
 void debugPrintAstNode(ast_base *Node);
 
@@ -46,7 +50,6 @@ void ParserInit(parser *Parser, lexer *Lexer) {
   Parser->Lexer = Lexer;
   nextToken(Parser);
   nextToken(Parser);
-
 
   /* Initialize the precedence table */
   memset(PrecedenceTable, 0, sizeof(PrecedenceTable));
@@ -134,6 +137,8 @@ PrefixParseFunction findPrefixParseFunction(token_type Token) {
     return parseBoolean;
   case TOKEN_LPAREN:
     return parseGroupedExpression;
+  case TOKEN_IF:
+    return parseIfExpression;
   default:
     printf("no prefix parse function for (%s) found\n", TokenType[Token]);
     return NULL;
@@ -226,6 +231,62 @@ ast_base *parseGroupedExpression(parser *Parser) {
   return Expr;
 }
 
+ast_base *parseIfExpression(parser *Parser) {
+  ast_if_expression *IfExpr = (ast_if_expression *)createNode(
+      Parser, sizeof(ast_if_expression), AST_IF_EXPRESSION);
+
+  IfExpr->Alternative = NULL;
+  if (Parser->PeekToken != TOKEN_LPAREN) {
+    return NULL;
+  }
+  nextToken(Parser);
+  nextToken(Parser);
+
+  IfExpr->Condition = parseExpression(Parser, PRECEDENCE_LOWEST);
+
+  if (Parser->PeekToken != TOKEN_RPAREN) {
+    return NULL;
+  }
+  nextToken(Parser);
+
+  if (Parser->PeekToken != TOKEN_LBRACE) {
+    return NULL;
+  }
+  nextToken(Parser);
+
+  IfExpr->Consequence = parseBlockStatement(Parser);
+
+  if (Parser->PeekToken == TOKEN_ELSE) {
+    nextToken(Parser);
+
+    if (Parser->PeekToken != TOKEN_LBRACE) {
+      return NULL;
+    }
+    nextToken(Parser);
+
+    IfExpr->Alternative = parseBlockStatement(Parser);
+  }
+
+  return (ast_base *)IfExpr;
+}
+
+ast_base *parseBlockStatement(parser *Parser) {
+  ast_block_statement *Block = (ast_block_statement *)createNode(
+      Parser, sizeof(ast_block_statement), AST_BLOCK_STATEMENT);
+  Block->Statements = NULL;
+  nextToken(Parser);
+
+  while (Parser->CurToken != TOKEN_RBRACE && Parser->CurToken != TOKEN_END) {
+    ast_base *Stmt = parseStatement(Parser);
+    if (Stmt) {
+      ArrayPush(Block->Statements, Stmt);
+    }
+    nextToken(Parser);
+  }
+
+  return (ast_base *)Block;
+}
+
 void debugPrintAstNode(ast_base *Node) {
   switch (Node->Type) {
   case AST_IDENTIFIER: {
@@ -302,6 +363,27 @@ void debugPrintAstNode(ast_base *Node) {
   case AST_BOOLEAN: {
     ast_boolean *Boolean = (ast_boolean *)Node;
     (Boolean->Value) ? printf("true") : printf("false");
+  } break;
+  case AST_IF_EXPRESSION: {
+    ast_if_expression *Expr = (ast_if_expression *) Node;
+    printf("if(");
+    debugPrintAstNode(Expr->Condition);
+    printf(") {");
+    debugPrintAstNode(Expr->Consequence);
+    printf("}");
+
+    if(Expr->Alternative) {
+      printf("else {");
+      debugPrintAstNode(Expr->Consequence);
+      printf("}");
+    }
+  } break;
+  case AST_BLOCK_STATEMENT: {
+    ast_block_statement *Block = (ast_block_statement *) Node;
+    unsigned int i;
+    for (i = 0; i < ArraySize(Block->Statements); i++) {
+      debugPrintAstNode(Block->Statements[i]);
+    }
   } break;
   default:
     printf("\n");

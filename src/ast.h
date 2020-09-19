@@ -5,6 +5,8 @@
   X(AST_INTEGER_LITERAL)                                                       \
   X(AST_PREFIX_EXPRESSION)                                                     \
   X(AST_BOOLEAN)                                                               \
+  X(AST_IF_EXPRESSION)                                                         \
+  X(AST_BLOCK_STATEMENT)                                                       \
   XX(AST_INFIX_EXPRESSION)
 
 #define X(name) name,
@@ -54,6 +56,20 @@ typedef struct {
   token_type Operation;
   ast_base *Right;
 } ast_prefix_expression;
+
+typedef struct {
+  ast_base Base;
+
+  ast_base *Condition;
+  ast_base *Consequence;
+  ast_base *Alternative;
+} ast_if_expression;
+
+typedef struct {
+  ast_base Base;
+
+  ast_base **Statements;
+} ast_block_statement;
 
 typedef struct {
   ast_base Base;
