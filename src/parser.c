@@ -11,6 +11,8 @@ enum parser_precedence {
   PRECEDENCE_PREFIX,
   PRECEDENCE_CALL
 };
+
+static unsigned int PrecedenceTable[TOKEN_ENUM_COUNT];
 unsigned int getPrecedence(token_type Token);
 
 /* allocating functions */
@@ -44,6 +46,19 @@ void ParserInit(parser *Parser, lexer *Lexer) {
   Parser->Lexer = Lexer;
   nextToken(Parser);
   nextToken(Parser);
+
+
+  /* Initialize the precedence table */
+  memset(PrecedenceTable, 0, sizeof(PrecedenceTable));
+  PrecedenceTable[TOKEN_EQ] = PRECEDENCE_EQUALS;
+  PrecedenceTable[TOKEN_NOT_EQ] = PRECEDENCE_EQUALS;
+  PrecedenceTable[TOKEN_PLUS] = PRECEDENCE_SUM;
+  PrecedenceTable[TOKEN_MINUS] = PRECEDENCE_SUM;
+  PrecedenceTable[TOKEN_LT] = PRECEDENCE_LESSGREATER;
+  PrecedenceTable[TOKEN_GT] = PRECEDENCE_LESSGREATER;
+  PrecedenceTable[TOKEN_SLASH] = PRECEDENCE_PRODUCT;
+  PrecedenceTable[TOKEN_ASTERISK] = PRECEDENCE_PRODUCT;
+  PrecedenceTable[TOKEN_LPAREN] = PRECEDENCE_CALL;
 }
 
 ast_program *ParseProgram(parser *Parser) {
@@ -85,7 +100,7 @@ ast_base *parseExpression(parser *Parser, unsigned int Precedence) {
   LeftExpression = PrefixFn(Parser);
 
   while (Parser->PeekToken != TOKEN_SEMICOLON &&
-         Precedence < getPrecedence(Parser->PeekToken)) {
+         Precedence < PrecedenceTable[Parser->PeekToken]) {
     InfixParseFunction InfixFn = findInfixParseFunction(Parser->PeekToken);
     if (InfixFn == NULL) {
       return LeftExpression;
@@ -147,7 +162,7 @@ ast_base *parseInfixExpression(parser *Parser, ast_base *Left) {
   ast_base *Node =
       createNode(Parser, sizeof(ast_infix_expression), AST_INFIX_EXPRESSION);
   ast_infix_expression Infix;
-  unsigned int Precedence = getPrecedence(Parser->CurToken);
+  unsigned int Precedence = PrecedenceTable[Parser->CurToken];
 
   memcpy(&Infix, Node, sizeof(ast_infix_expression));
 
@@ -298,25 +313,4 @@ ast_base *createNode(parser *P, unsigned int Size, ast_type Type) {
   Ret->Size = Size;
   Ret->Type = Type;
   return Ret;
-}
-
-unsigned int getPrecedence(token_type Token) {
-  switch (Token) {
-  case TOKEN_EQ:
-  case TOKEN_NOT_EQ:
-    return PRECEDENCE_EQUALS;
-  case TOKEN_LT:
-  case TOKEN_GT:
-    return PRECEDENCE_LESSGREATER;
-  case TOKEN_PLUS:
-  case TOKEN_MINUS:
-    return PRECEDENCE_SUM;
-  case TOKEN_SLASH:
-  case TOKEN_ASTERISK:
-    return PRECEDENCE_PRODUCT;
-  case TOKEN_LPAREN:
-    return PRECEDENCE_CALL;
-  default:
-    return 0;
-  }
 }

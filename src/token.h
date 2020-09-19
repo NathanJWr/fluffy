@@ -36,7 +36,8 @@
   X(FALSE)                                                                     \
   X(IF)                                                                        \
   X(ELSE)                                                                      \
-  XX(RETURN)
+  X(RETURN)                                                                    \
+  XX(ENUM_COUNT)
 
 #define X(name) TOKEN_##name,
 #define XX(name) TOKEN_##name
