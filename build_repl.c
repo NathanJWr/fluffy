@@ -9,12 +9,15 @@
 #include <inttypes.h>
 
 /* project includes */
+#include "src/defines.h"
+#include "src/stretchy_array.h"
 #include "src/token.h"
 #include "src/lexer.h"
 #include "src/ast.h"
 #include "src/parser.h"
 
 /* project c files */
+#include "src/ast.c"
 #include "src/parser.c"
 #include "src/lexer.c"
 #include "src/repl.c"

@@ -12,6 +12,7 @@ void ReadLine(char *Buffer, size_t *SizeRead, FILE *ReadLocation) {
 
 int main() {
   lexer Lexer;
+  parser Parser;
   unsigned int StringStoreSize = 0x10000;
   char *StringStore = malloc(StringStoreSize);
 
@@ -21,14 +22,15 @@ int main() {
 
   while (1) {
     token_type Token;
+    ast_program *Program;
+
     printf(">> ");
     ReadLine(ReadBuffer, &GetlineSize, stdin);
 
-    LexerInit(&Lexer, ReadBuffer, ReadBuffer + GetlineSize, StringStore, StringStoreSize);
-    Token = NextToken(&Lexer);
-    while (Token != TOKEN_END) {
-      printf("Token type: %s\n", TokenType[Token]);
-      Token = NextToken(&Lexer);
-    }
+    LexerInit(&Lexer, ReadBuffer, ReadBuffer + GetlineSize, StringStore,
+              StringStoreSize);
+    ParserInit(&Parser, &Lexer);
+    Program = ParseProgram(&Parser);
+    AstNodeDelete((ast_base *)Program);
   }
 }

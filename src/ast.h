@@ -1,8 +1,27 @@
-enum ast_type {
-  AST_BASE,
-  AST_PROGRAM,
-  AST_IDENTIFIER
-};
+#define AST_TYPE_LIST                                                          \
+  X(AST_BASE)                                                                  \
+  X(AST_PROGRAM)                                                               \
+  X(AST_IDENTIFIER)                                                            \
+  X(AST_INTEGER_LITERAL)                                                       \
+  X(AST_PREFIX_EXPRESSION)                                                     \
+  X(AST_BOOLEAN)                                                               \
+  X(AST_IF_EXPRESSION)                                                         \
+  X(AST_BLOCK_STATEMENT)                                                       \
+  X(AST_FUNCTION_LITERAL)                                                      \
+  X(AST_FUNCTION_CALL)                                                         \
+  XX(AST_INFIX_EXPRESSION)
+
+#define X(name) name,
+#define XX(name) name
+typedef enum { AST_TYPE_LIST } ast_type;
+#undef X
+#undef XX
+
+#define X(name) #name,
+#define XX(name) #name
+const char *AstType[] = {AST_TYPE_LIST};
+#undef X
+#undef XX
 
 typedef struct {
   unsigned char Type; /* Type of the "actual" ast node */
@@ -12,8 +31,7 @@ typedef struct {
 typedef struct {
   ast_base Base;
 
-  unsigned int StatementsLength;
-  /* Statements are contiguosly stored in memory after the program ast data */
+  ast_base **Statements;
 } ast_program;
 
 typedef struct {
@@ -21,3 +39,58 @@ typedef struct {
 
   const char *Value;
 } ast_identifier;
+
+typedef struct {
+  ast_base Base;
+
+  long Integer;
+} ast_integer_literal;
+
+typedef struct {
+  ast_base Base;
+
+  bool Value;
+} ast_boolean;
+
+typedef struct {
+  ast_base Base;
+
+  token_type Operation;
+  ast_base *Right;
+} ast_prefix_expression;
+
+typedef struct {
+  ast_base Base;
+
+  ast_base *Condition;
+  ast_base *Consequence;
+  ast_base *Alternative;
+} ast_if_expression;
+
+typedef struct {
+  ast_base Base;
+
+  ast_base **Statements;
+} ast_block_statement;
+
+typedef struct {
+  ast_base Base;
+
+  ast_base **Parameters;
+  ast_base *Body;
+} ast_function_literal;
+
+typedef struct {
+  ast_base Base;
+
+  token_type Operation;
+  ast_base *Left;
+  ast_base *Right;
+} ast_infix_expression;
+
+typedef struct {
+  ast_base Base;
+
+  const char *FunctionName;
+  ast_base **Arguments;
+} ast_function_call;
