@@ -16,16 +16,17 @@ static unsigned int PrecedenceTable[TOKEN_ENUM_COUNT];
 unsigned int getPrecedence(token_type Token);
 
 /* allocating functions */
-void initializeNodeArray(parser *P, size_t Size);
+/* TODO(Nathan): Possible optimization -> pre-allocate larger chunks of memory
+ */
 ast_base *createNode(parser *P, unsigned int Size, ast_type Type);
 
-/* basic parse functions */
+/* basic top-level parse functions */
 void nextToken(parser *Parser);
 ast_base *parseStatement(parser *Parser);
 ast_base *parseExpressionStatement(parser *Parser);
 ast_base *parseExpression(parser *Parser, unsigned int Precedence);
 
-/* Prefix parsing function */
+/* Prefix expression parsing function */
 typedef ast_base *(*PrefixParseFunction)(parser *);
 PrefixParseFunction findPrefixParseFunction(token_type Token);
 ast_base *parsePrefixExpression(parser *Parser);
@@ -36,7 +37,7 @@ ast_base *parseGroupedExpression(parser *Parser);
 ast_base *parseIfExpression(parser *Parser);
 ast_base *parseFunctionLiteral(parser *Parser);
 
-/* Infix parsing function */
+/* Infix expression parsing function */
 typedef ast_base *(*InfixParseFunction)(parser *, ast_base *left);
 InfixParseFunction findInfixParseFunction(token_type Token);
 ast_base *parseInfixExpression(parser *Parser, ast_base *left);
@@ -68,7 +69,6 @@ void ParserInit(parser *Parser, lexer *Lexer) {
 }
 
 ast_program *ParseProgram(parser *Parser) {
-  /* initialize the AstNodes to store nodes */
   ast_program *ProgramNode =
       (ast_program *)createNode(Parser, sizeof(ast_program), AST_PROGRAM);
 
@@ -83,6 +83,9 @@ ast_program *ParseProgram(parser *Parser) {
   return ProgramNode;
 }
 
+/* Top level parsing function
+ * We either want to parse a statement (e.g. var, return) or if that is not
+ * possible an expresssion (e.g. 1, hello, !true) */
 ast_base *parseStatement(parser *Parser) {
   switch (Parser->CurToken) {
   default:
@@ -90,6 +93,9 @@ ast_base *parseStatement(parser *Parser) {
   }
 }
 
+/* Top level expression parsing.
+ * We first will actually parse the expression and then
+ * remove the trailing semicolon if it appears */
 ast_base *parseExpressionStatement(parser *Parser) {
   ast_base *Expr = parseExpression(Parser, PRECEDENCE_LOWEST);
   if (Parser->PeekToken == TOKEN_SEMICOLON) {
@@ -98,7 +104,11 @@ ast_base *parseExpressionStatement(parser *Parser) {
   return Expr;
 }
 
+/* expression parsing using a "Pratt Parser" so we can easily preserve order
+ * of operations using our PrecedenceTable */
 ast_base *parseExpression(parser *Parser, unsigned int Precedence) {
+  /* Start off by seeing if a prefix parsing function exists to parse a
+   * particular Token */
   ast_base *LeftExpression;
   PrefixParseFunction PrefixFn = findPrefixParseFunction(Parser->CurToken);
   if (PrefixFn == NULL) {
@@ -106,6 +116,9 @@ ast_base *parseExpression(parser *Parser, unsigned int Precedence) {
   }
   LeftExpression = PrefixFn(Parser);
 
+  /* Our expression could be more complicated than just the prefix expression we
+   * just parsed. It could be part of a larger infix expression (e.g. !true ==
+   * false) */
   while (Parser->PeekToken != TOKEN_SEMICOLON &&
          Precedence < PrecedenceTable[Parser->PeekToken]) {
     InfixParseFunction InfixFn = findInfixParseFunction(Parser->PeekToken);
@@ -116,9 +129,12 @@ ast_base *parseExpression(parser *Parser, unsigned int Precedence) {
     nextToken(Parser);
     LeftExpression = InfixFn(Parser, LeftExpression);
   }
+
   return LeftExpression;
 }
 
+/* get the next token from the lexer and set the Parser's CurToken and PeekToken
+ * accordingly */
 void nextToken(parser *Parser) {
   Parser->CurToken = Parser->PeekToken;
   Parser->CurString = Parser->Lexer->String;
@@ -127,6 +143,8 @@ void nextToken(parser *Parser) {
   Parser->PeekToken = NextToken(Parser->Lexer);
 }
 
+/* will return a prefix parsing function depending on a token type
+ * Note: Not all tokens will have a function associated with them */
 PrefixParseFunction findPrefixParseFunction(token_type Token) {
   switch (Token) {
   case TOKEN_IDENT:
@@ -151,6 +169,8 @@ PrefixParseFunction findPrefixParseFunction(token_type Token) {
   }
 }
 
+/* will return a infix parsing function depending on a token type
+ * Note: Not all tokens will have a function associated with them */
 InfixParseFunction findInfixParseFunction(token_type Token) {
   switch (Token) {
   case TOKEN_PLUS:
@@ -170,6 +190,12 @@ InfixParseFunction findInfixParseFunction(token_type Token) {
   }
 }
 
+/* Main way to parse infix expressions.
+ * We expect to be inside of a particular expression, because of this the
+ * previously parsed part of the expression should be passed as the Left
+ * parameter (e.g. 1 + 2;  --->  "1" should already be a parsed integer that is
+ * passed as the Left parameter, with "+ 2" being what is parsed in this
+ * function) */
 ast_base *parseInfixExpression(parser *Parser, ast_base *Left) {
   ast_base *Node =
       createNode(Parser, sizeof(ast_infix_expression), AST_INFIX_EXPRESSION);
@@ -187,6 +213,9 @@ ast_base *parseInfixExpression(parser *Parser, ast_base *Left) {
   return Node;
 }
 
+/* Function Call Example: foo(a, b, c);
+ * Parsers the name of the function and the arguments that should be passed to
+ * it */
 ast_base *parseFunctionCallExppression(parser *Parser, ast_base *left) {
   ast_function_call *Call = (ast_function_call *)createNode(
       Parser, sizeof(ast_function_call), AST_FUNCTION_CALL);
@@ -195,6 +224,7 @@ ast_base *parseFunctionCallExppression(parser *Parser, ast_base *left) {
   return (ast_base *)Call;
 }
 
+/* Helper function to parse all the comma separated arguments inside a function call */
 ast_base **parseFunctionCallArguments(parser *Parser) {
   ast_base **Args = NULL;
 
@@ -224,6 +254,7 @@ ast_base **parseFunctionCallArguments(parser *Parser) {
   return Args;
 }
 
+/* parses prefix expressions like !true and -1 */
 ast_base *parsePrefixExpression(parser *Parser) {
   ast_prefix_expression *Prefix = (ast_prefix_expression *)createNode(
       Parser, sizeof(ast_prefix_expression), AST_PREFIX_EXPRESSION);
@@ -233,6 +264,7 @@ ast_base *parsePrefixExpression(parser *Parser) {
   return (ast_base *)Prefix;
 }
 
+/* parses an identifier (e.g. abc, foo, bar, etc.) */
 ast_base *parseIdentifier(parser *Parser) {
   ast_base *Node = createNode(Parser, sizeof(ast_identifier), AST_IDENTIFIER);
   ast_identifier Ident;
@@ -245,6 +277,7 @@ ast_base *parseIdentifier(parser *Parser) {
   return Node;
 }
 
+/* parses an integer (e.g. 123, 432, etc.) */
 ast_base *parseIntegerLiteral(parser *Parser) {
   ast_integer_literal *Integer = (ast_integer_literal *)createNode(
       Parser, sizeof(ast_integer_literal), AST_INTEGER_LITERAL);
@@ -253,6 +286,7 @@ ast_base *parseIntegerLiteral(parser *Parser) {
   return (ast_base *)Integer;
 }
 
+/* parses booleans true and false */
 ast_base *parseBoolean(parser *Parser) {
   ast_boolean *Boolean =
       (ast_boolean *)createNode(Parser, sizeof(ast_boolean), AST_BOOLEAN);
@@ -262,6 +296,7 @@ ast_base *parseBoolean(parser *Parser) {
   return (ast_base *)Boolean;
 }
 
+/* parses expressions that have parentheses (e.g. (1 + (4 / 2))) */
 ast_base *parseGroupedExpression(parser *Parser) {
   ast_base *Expr;
   nextToken(Parser);
@@ -275,6 +310,7 @@ ast_base *parseGroupedExpression(parser *Parser) {
   return Expr;
 }
 
+/* Parses if expressions as well as their possible else conditions */
 ast_base *parseIfExpression(parser *Parser) {
   ast_if_expression *IfExpr = (ast_if_expression *)createNode(
       Parser, sizeof(ast_if_expression), AST_IF_EXPRESSION);
@@ -314,6 +350,8 @@ ast_base *parseIfExpression(parser *Parser) {
   return (ast_base *)IfExpr;
 }
 
+/* parses a function literal (i.e. a function declaration) like
+ * fn(a, b) { return true; } */
 ast_base *parseFunctionLiteral(parser *Parser) {
   ast_function_literal *Func = (ast_function_literal *)createNode(
       Parser, sizeof(ast_function_literal), AST_FUNCTION_LITERAL);
@@ -335,6 +373,8 @@ ast_base *parseFunctionLiteral(parser *Parser) {
   return (ast_base *)Func;
 }
 
+/* helper function to parse a function's arguments
+ * Note: these arguments should all be Identifiers */
 ast_base **parseFunctionArguments(parser *Parser) {
   ast_base **Identifiers = NULL;
   ast_identifier *Ident;
@@ -370,6 +410,8 @@ ast_base **parseFunctionArguments(parser *Parser) {
   return Identifiers;
 }
 
+/* parses a list of statements that are contained within curly brackets
+ * e.g. { true; false; 1 + 2; } */
 ast_base *parseBlockStatement(parser *Parser) {
   ast_block_statement *Block = (ast_block_statement *)createNode(
       Parser, sizeof(ast_block_statement), AST_BLOCK_STATEMENT);
@@ -387,6 +429,7 @@ ast_base *parseBlockStatement(parser *Parser) {
   return (ast_base *)Block;
 }
 
+/* Pretty prints ast nodes */
 void debugPrintAstNode(ast_base *Node) {
   switch (Node->Type) {
   case AST_IDENTIFIER: {
@@ -528,6 +571,7 @@ void debugPrintAstNode(ast_base *Node) {
   }
 }
 
+/* Creates an ast node and sets the base Size and Type values */
 ast_base *createNode(parser *P, unsigned int Size, ast_type Type) {
   ast_base *Ret = malloc(Size);
   Ret->Size = Size;
