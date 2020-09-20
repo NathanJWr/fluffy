@@ -7,6 +7,7 @@
   X(AST_BOOLEAN)                                                               \
   X(AST_IF_EXPRESSION)                                                         \
   X(AST_BLOCK_STATEMENT)                                                       \
+  X(AST_FUNCTION_LITERAL)                                                      \
   XX(AST_INFIX_EXPRESSION)
 
 #define X(name) name,
@@ -70,6 +71,13 @@ typedef struct {
 
   ast_base **Statements;
 } ast_block_statement;
+
+typedef struct {
+  ast_base Base;
+
+  ast_base **Parameters;
+  ast_base *Body;
+} ast_function_literal;
 
 typedef struct {
   ast_base Base;

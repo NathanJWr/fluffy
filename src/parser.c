@@ -34,6 +34,8 @@ ast_base *parseIntegerLiteral(parser *Parser);
 ast_base *parseBoolean(parser *Parser);
 ast_base *parseGroupedExpression(parser *Parser);
 ast_base *parseIfExpression(parser *Parser);
+ast_base *parseFunctionLiteral(parser *Parser);
+ast_base **parseFunctionArguments(parser *Parser);
 
 /* Infix parsing function */
 typedef ast_base *(*InfixParseFunction)(parser *, ast_base *left);
@@ -72,7 +74,8 @@ ast_program *ParseProgram(parser *Parser) {
   ProgramNode->Statements = NULL;
   while (Parser->CurToken != TOKEN_END) {
     ast_base *Stmt = parseStatement(Parser);
-    ArrayPush(ProgramNode->Statements, Stmt);
+    if (Stmt)
+      ArrayPush(ProgramNode->Statements, Stmt);
     nextToken(Parser);
   }
   debugPrintAstNode((ast_base *)ProgramNode);
@@ -139,6 +142,8 @@ PrefixParseFunction findPrefixParseFunction(token_type Token) {
     return parseGroupedExpression;
   case TOKEN_IF:
     return parseIfExpression;
+  case TOKEN_FUNCTION:
+    return parseFunctionLiteral;
   default:
     printf("no prefix parse function for (%s) found\n", TokenType[Token]);
     return NULL;
@@ -270,6 +275,62 @@ ast_base *parseIfExpression(parser *Parser) {
   return (ast_base *)IfExpr;
 }
 
+ast_base *parseFunctionLiteral(parser *Parser) {
+  ast_function_literal *Func = (ast_function_literal *)createNode(
+      Parser, sizeof(ast_function_literal), AST_FUNCTION_LITERAL);
+
+  if (Parser->PeekToken != TOKEN_LPAREN) {
+    return NULL;
+  }
+  nextToken(Parser);
+
+  Func->Parameters = parseFunctionArguments(Parser);
+
+  if (Parser->PeekToken != TOKEN_LBRACE) {
+    return NULL;
+  }
+  nextToken(Parser);
+
+  Func->Body = parseBlockStatement(Parser);
+
+  return (ast_base *)Func;
+}
+
+ast_base **parseFunctionArguments(parser *Parser) {
+  ast_base **Identifiers = NULL;
+  ast_identifier *Ident;
+
+  if (Parser->PeekToken == TOKEN_RPAREN) {
+    nextToken(Parser);
+    return Identifiers;
+  }
+
+  /* create the first identifier */
+  nextToken(Parser);
+  Ident = (ast_identifier *)createNode(Parser, sizeof(ast_identifier),
+                                       AST_IDENTIFIER);
+  Ident->Value = Parser->CurString;
+  ArrayPush(Identifiers, (ast_base *)Ident);
+
+  /* keep parsing identifiers until we don't see commas */
+  while (Parser->PeekToken == TOKEN_COMMA) {
+    nextToken(Parser);
+    nextToken(Parser);
+
+    Ident = (ast_identifier *)createNode(Parser, sizeof(ast_identifier),
+                                         AST_IDENTIFIER);
+    Ident->Value = Parser->CurString;
+    ArrayPush(Identifiers, (ast_base *)Ident);
+  }
+
+  if (Parser->PeekToken != TOKEN_RPAREN) {
+    return NULL;
+  }
+  nextToken(Parser);
+
+  return Identifiers;
+}
+
 ast_base *parseBlockStatement(parser *Parser) {
   ast_block_statement *Block = (ast_block_statement *)createNode(
       Parser, sizeof(ast_block_statement), AST_BLOCK_STATEMENT);
@@ -365,25 +426,50 @@ void debugPrintAstNode(ast_base *Node) {
     (Boolean->Value) ? printf("true") : printf("false");
   } break;
   case AST_IF_EXPRESSION: {
-    ast_if_expression *Expr = (ast_if_expression *) Node;
+    ast_if_expression *Expr = (ast_if_expression *)Node;
     printf("if(");
     debugPrintAstNode(Expr->Condition);
     printf(") {");
     debugPrintAstNode(Expr->Consequence);
     printf("}");
 
-    if(Expr->Alternative) {
+    if (Expr->Alternative) {
       printf("else {");
       debugPrintAstNode(Expr->Consequence);
       printf("}");
     }
   } break;
   case AST_BLOCK_STATEMENT: {
-    ast_block_statement *Block = (ast_block_statement *) Node;
+    ast_block_statement *Block = (ast_block_statement *)Node;
     unsigned int i;
-    for (i = 0; i < ArraySize(Block->Statements); i++) {
+
+    /* print statements separated by semicolons */
+    if (Block->Statements) {
+      for (i = 0; i < ArraySize(Block->Statements) - 1; i++) {
+        debugPrintAstNode(Block->Statements[i]);
+        printf("; ");
+      }
       debugPrintAstNode(Block->Statements[i]);
     }
+  } break;
+  case AST_FUNCTION_LITERAL: {
+    ast_function_literal *Func = (ast_function_literal *)Node;
+    unsigned int i;
+    printf("fn(");
+
+    /* Print parameters separated by commas */
+    if (Func->Parameters) {
+      for (i = 0; i < ArraySize(Func->Parameters) - 1; i++) {
+        debugPrintAstNode(Func->Parameters[i]);
+        printf(", ");
+      } 
+      debugPrintAstNode(Func->Parameters[i]);
+    }
+
+    /* Print the body statements */
+    printf(") { ");
+    debugPrintAstNode(Func->Body);
+    printf(" }");
   } break;
   default:
     printf("\n");
