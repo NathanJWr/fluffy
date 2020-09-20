@@ -8,6 +8,7 @@
   X(AST_IF_EXPRESSION)                                                         \
   X(AST_BLOCK_STATEMENT)                                                       \
   X(AST_FUNCTION_LITERAL)                                                      \
+  X(AST_FUNCTION_CALL)                                                         \
   XX(AST_INFIX_EXPRESSION)
 
 #define X(name) name,
@@ -86,3 +87,10 @@ typedef struct {
   ast_base *Left;
   ast_base *Right;
 } ast_infix_expression;
+
+typedef struct {
+  ast_base Base;
+
+  const char *FunctionName;
+  ast_base **Arguments;
+} ast_function_call;

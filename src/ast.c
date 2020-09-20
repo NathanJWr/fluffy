@@ -2,6 +2,7 @@ void AstProgramDelete(ast_program *Program);
 void AstBlockDelete(ast_block_statement *Block);
 void AstIfExpressionDelete(ast_if_expression *Expr);
 void AstFunctionLiteralDelete(ast_function_literal *Func);
+void AstFunctionCallDelete(ast_function_call *Call);
 
 void AstNodeDelete(ast_base *Node) {
   switch (Node->Type) {
@@ -13,6 +14,12 @@ void AstNodeDelete(ast_base *Node) {
     break;
   case AST_IF_EXPRESSION:
     AstIfExpressionDelete((ast_if_expression *)Node);
+    break;
+  case AST_FUNCTION_LITERAL:
+    AstFunctionLiteralDelete((ast_function_literal *)Node);
+    break;
+  case AST_FUNCTION_CALL:
+    AstFunctionCallDelete((ast_function_call *)Node);
     break;
   default:
     free(Node);
@@ -56,4 +63,13 @@ void AstFunctionLiteralDelete(ast_function_literal *Func) {
   }
   AstNodeDelete(Func->Body);
   free(Func);
+}
+
+void AstFunctionCallDelete(ast_function_call *Call) {
+  unsigned int ArgumentsSize = ArraySize(Call->Arguments);
+  unsigned int i;
+  for (i = 0; i < ArgumentsSize; i++) {
+    AstNodeDelete(Call->Arguments[i]);
+  }
+  free(Call);
 }

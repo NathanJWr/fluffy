@@ -35,16 +35,17 @@ ast_base *parseBoolean(parser *Parser);
 ast_base *parseGroupedExpression(parser *Parser);
 ast_base *parseIfExpression(parser *Parser);
 ast_base *parseFunctionLiteral(parser *Parser);
-ast_base **parseFunctionArguments(parser *Parser);
 
 /* Infix parsing function */
 typedef ast_base *(*InfixParseFunction)(parser *, ast_base *left);
 InfixParseFunction findInfixParseFunction(token_type Token);
 ast_base *parseInfixExpression(parser *Parser, ast_base *left);
+ast_base *parseFunctionCallExppression(parser *Parser, ast_base *left);
 
 /* Helper parsing function */
 ast_base *parseBlockStatement(parser *Parser);
-
+ast_base **parseFunctionCallArguments(parser *Parser);
+ast_base **parseFunctionArguments(parser *Parser);
 void debugPrintAstNode(ast_base *Node);
 
 void ParserInit(parser *Parser, lexer *Lexer) {
@@ -161,7 +162,8 @@ InfixParseFunction findInfixParseFunction(token_type Token) {
   case TOKEN_LT:
   case TOKEN_GT:
     return parseInfixExpression;
-
+  case TOKEN_LPAREN:
+    return parseFunctionCallExppression;
   default:
     printf("no prefix parse function for (%s) found\n", TokenType[Token]);
     return NULL;
@@ -183,6 +185,43 @@ ast_base *parseInfixExpression(parser *Parser, ast_base *Left) {
 
   memcpy(Node, &Infix, sizeof(ast_infix_expression));
   return Node;
+}
+
+ast_base *parseFunctionCallExppression(parser *Parser, ast_base *left) {
+  ast_function_call *Call = (ast_function_call *)createNode(
+      Parser, sizeof(ast_function_call), AST_FUNCTION_CALL);
+  Call->FunctionName = Parser->CurString;
+  Call->Arguments = parseFunctionCallArguments(Parser);
+  return (ast_base *)Call;
+}
+
+ast_base **parseFunctionCallArguments(parser *Parser) {
+  ast_base **Args = NULL;
+
+  /* empty arguments list */
+  if (Parser->PeekToken == TOKEN_RPAREN) {
+    nextToken(Parser);
+    return Args;
+  }
+
+  /* parse the first argument */
+  nextToken(Parser);
+  ArrayPush(Args, parseExpression(Parser, PRECEDENCE_LOWEST));
+
+  /* parse any arguments that are comma separated */
+  while (Parser->PeekToken == TOKEN_COMMA) {
+    nextToken(Parser);
+    nextToken(Parser);
+
+    ArrayPush(Args, parseExpression(Parser, PRECEDENCE_LOWEST));
+  }
+
+  if (Parser->PeekToken != TOKEN_RPAREN) {
+    return NULL;
+  }
+  nextToken(Parser);
+
+  return Args;
 }
 
 ast_base *parsePrefixExpression(parser *Parser) {
@@ -462,10 +501,23 @@ void debugPrintAstNode(ast_base *Node) {
       for (i = 0; i < ArraySize(Func->Parameters) - 1; i++) {
         debugPrintAstNode(Func->Parameters[i]);
         printf(", ");
-      } 
+      }
       debugPrintAstNode(Func->Parameters[i]);
     }
+  case AST_FUNCTION_CALL: {
+    ast_function_call *Call = (ast_function_call *)Node;
+    unsigned int i;
 
+    printf("%s(", Call->FunctionName);
+    if (Call->Arguments) {
+      for (i = 0; i < ArraySize(Call->Arguments) - 1; i++) {
+        debugPrintAstNode(Call->Arguments[i]);
+        printf(", ");
+      }
+      debugPrintAstNode(Call->Arguments[i]);
+    }
+    printf(")");
+  } break;
     /* Print the body statements */
     printf(") { ");
     debugPrintAstNode(Func->Body);
