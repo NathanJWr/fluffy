@@ -3,6 +3,9 @@ void AstBlockDelete(ast_block_statement *Block);
 void AstIfExpressionDelete(ast_if_expression *Expr);
 void AstFunctionLiteralDelete(ast_function_literal *Func);
 void AstFunctionCallDelete(ast_function_call *Call);
+void AstVarStatementDelete(ast_var_statement *Stmt);
+void AstInfixExpressionDelete(ast_infix_expression *Expr);
+void AstReturnStatementDelete(ast_return_statement *Ret);
 
 void AstNodeDelete(ast_base *Node) {
   switch (Node->Type) {
@@ -20,6 +23,15 @@ void AstNodeDelete(ast_base *Node) {
     break;
   case AST_FUNCTION_CALL:
     AstFunctionCallDelete((ast_function_call *)Node);
+    break;
+  case AST_VAR_STATEMENT:
+    AstVarStatementDelete((ast_var_statement *)Node);
+    break;
+  case AST_INFIX_EXPRESSION:
+    AstInfixExpressionDelete((ast_infix_expression *)Node);
+    break;
+  case AST_RETURN_STATEMENT:
+    AstReturnStatementDelete((ast_return_statement *)Node);
     break;
   default:
     free(Node);
@@ -72,4 +84,21 @@ void AstFunctionCallDelete(ast_function_call *Call) {
     AstNodeDelete(Call->Arguments[i]);
   }
   free(Call);
+}
+
+void AstVarStatementDelete(ast_var_statement *Stmt) {
+  AstNodeDelete((ast_base *)Stmt->Name);
+  AstNodeDelete(Stmt->Value);
+  free(Stmt);
+}
+
+void AstInfixExpressionDelete(ast_infix_expression *Expr) {
+  AstNodeDelete(Expr->Left);
+  AstNodeDelete(Expr->Right);
+  free(Expr);
+}
+
+void AstReturnStatementDelete(ast_return_statement *Ret) {
+  AstNodeDelete(Ret->Expr);
+  free(Ret);
 }

@@ -8,6 +8,9 @@
 #include <errno.h>
 #include <inttypes.h>
 
+/* debug includes */
+#include "src/leak_checker.h"
+
 /* project includes */
 #include "src/defines.h"
 #include "src/stretchy_array.h"
