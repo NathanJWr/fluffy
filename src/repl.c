@@ -21,11 +21,14 @@ int main() {
   char *ReadBuffer = malloc(ReadBufferSize);
 
   while (1) {
-    token_type Token;
     ast_program *Program;
 
     printf(">> ");
     ReadLine(ReadBuffer, &GetlineSize, stdin);
+
+    if (0 == strcmp(ReadBuffer, "exit")) {
+      break;
+    }
 
     LexerInit(&Lexer, ReadBuffer, ReadBuffer + GetlineSize, StringStore,
               StringStoreSize);
@@ -33,4 +36,8 @@ int main() {
     Program = ParseProgram(&Parser);
     AstNodeDelete((ast_base *)Program);
   }
+
+  free(ReadBuffer);
+  free(StringStore);
+  return 0;
 }

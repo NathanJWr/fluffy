@@ -547,6 +547,11 @@ void debugPrintAstNode(ast_base *Node) {
       }
       debugPrintAstNode(Func->Parameters[i]);
     }
+    /* Print the body statements */
+    printf(") { ");
+    debugPrintAstNode(Func->Body);
+    printf(" }");
+  } break;
   case AST_FUNCTION_CALL: {
     ast_function_call *Call = (ast_function_call *)Node;
     unsigned int i;
@@ -560,11 +565,6 @@ void debugPrintAstNode(ast_base *Node) {
       debugPrintAstNode(Call->Arguments[i]);
     }
     printf(")");
-  } break;
-    /* Print the body statements */
-    printf(") { ");
-    debugPrintAstNode(Func->Body);
-    printf(" }");
   } break;
   default:
     printf("\n");
