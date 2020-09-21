@@ -489,28 +489,28 @@ void debugPrintAstNode(ast_base *Node) {
 
     switch (Infix->Operation) {
     case TOKEN_PLUS:
-      printf("+");
+      printf(" + ");
       break;
     case TOKEN_MINUS:
-      printf("-");
+      printf(" - ");
       break;
     case TOKEN_SLASH:
-      printf("/");
+      printf(" / ");
       break;
     case TOKEN_ASTERISK:
-      printf("*");
+      printf(" * ");
       break;
     case TOKEN_GT:
-      printf(">");
+      printf(" > ");
       break;
     case TOKEN_LT:
-      printf("<");
+      printf(" < ");
       break;
     case TOKEN_EQ:
-      printf("==");
+      printf(" == ");
       break;
     case TOKEN_NOT_EQ:
-      printf("!=");
+      printf(" != ");
       break;
     default:
       break;
