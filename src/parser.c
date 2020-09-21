@@ -26,6 +26,9 @@ ast_base *parseStatement(parser *Parser);
 ast_base *parseExpressionStatement(parser *Parser);
 ast_base *parseExpression(parser *Parser, unsigned int Precedence);
 
+/* statement parsing */
+ast_base *parseVarStatement(parser *Parser);
+
 /* Prefix expression parsing function */
 typedef ast_base *(*PrefixParseFunction)(parser *);
 PrefixParseFunction findPrefixParseFunction(token_type Token);
@@ -88,9 +91,38 @@ ast_program *ParseProgram(parser *Parser) {
  * possible an expresssion (e.g. 1, hello, !true) */
 ast_base *parseStatement(parser *Parser) {
   switch (Parser->CurToken) {
+  case TOKEN_VAR:
+    return parseVarStatement(Parser);
   default:
     return parseExpressionStatement(Parser);
   }
+}
+
+ast_base *parseVarStatement(parser *Parser) {
+  ast_var_statement *Stmt = (ast_var_statement *)createNode(
+      Parser, sizeof(ast_var_statement), AST_VAR_STATEMENT);
+
+  if (Parser->PeekToken != TOKEN_IDENT) {
+    return NULL;
+  }
+  nextToken(Parser);
+
+  /* create an identifier ast for the name of the variable */
+  Stmt->Name = (ast_identifier *)parseIdentifier(Parser);
+
+  if (Parser->PeekToken != TOKEN_ASSIGN) {
+    return NULL;
+  }
+  nextToken(Parser); /* get to assign */
+  nextToken(Parser); /* skip assign */
+
+  Stmt->Value = parseExpression(Parser, PRECEDENCE_LOWEST);
+
+  if (Parser->PeekToken == TOKEN_SEMICOLON) {
+    nextToken(Parser);
+  }
+
+  return (ast_base *)Stmt;
 }
 
 /* Top level expression parsing.
@@ -224,7 +256,8 @@ ast_base *parseFunctionCallExppression(parser *Parser, ast_base *left) {
   return (ast_base *)Call;
 }
 
-/* Helper function to parse all the comma separated arguments inside a function call */
+/* Helper function to parse all the comma separated arguments inside a function
+ * call */
 ast_base **parseFunctionCallArguments(parser *Parser) {
   ast_base **Args = NULL;
 
@@ -565,6 +598,11 @@ void debugPrintAstNode(ast_base *Node) {
       debugPrintAstNode(Call->Arguments[i]);
     }
     printf(")");
+  } break;
+  case AST_VAR_STATEMENT: {
+    ast_var_statement *Stmt = (ast_var_statement *)Node;
+    printf("var %s = ", Stmt->Name->Value);
+    debugPrintAstNode(Stmt->Value);
   } break;
   default:
     printf("\n");

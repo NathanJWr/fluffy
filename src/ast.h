@@ -9,7 +9,9 @@
   X(AST_BLOCK_STATEMENT)                                                       \
   X(AST_FUNCTION_LITERAL)                                                      \
   X(AST_FUNCTION_CALL)                                                         \
-  XX(AST_INFIX_EXPRESSION)
+  X(AST_INFIX_EXPRESSION)                                                      \
+  X(AST_VAR_STATEMENT)                                                         \
+  XX(AST_TYPE_LIST_COUNT)
 
 #define X(name) name,
 #define XX(name) name
@@ -94,3 +96,10 @@ typedef struct {
   const char *FunctionName;
   ast_base **Arguments;
 } ast_function_call;
+
+typedef struct {
+  ast_base Base;
+
+  ast_identifier *Name;
+  ast_base *Value;
+} ast_var_statement;
