@@ -28,6 +28,7 @@ ast_base *parseExpression(parser *Parser, unsigned int Precedence);
 
 /* statement parsing */
 ast_base *parseVarStatement(parser *Parser);
+ast_base *parseRetStatement(parser *Parser);
 
 /* Prefix expression parsing function */
 typedef ast_base *(*PrefixParseFunction)(parser *);
@@ -72,8 +73,8 @@ void ParserInit(parser *Parser, lexer *Lexer) {
 }
 
 ast_program *ParseProgram(parser *Parser) {
-  ast_program *ProgramNode =
-      (ast_program *)astBaseNodeCreate(Parser, sizeof(ast_program), AST_PROGRAM);
+  ast_program *ProgramNode = (ast_program *)astBaseNodeCreate(
+      Parser, sizeof(ast_program), AST_PROGRAM);
 
   ProgramNode->Statements = NULL;
   while (Parser->CurToken != TOKEN_END) {
@@ -93,11 +94,15 @@ ast_base *parseStatement(parser *Parser) {
   switch (Parser->CurToken) {
   case TOKEN_VAR:
     return parseVarStatement(Parser);
+  case TOKEN_RETURN:
+    return parseRetStatement(Parser);
   default:
     return parseExpressionStatement(Parser);
   }
 }
 
+/* var statements:
+ * (e.g. var a = 1 + 1;) */
 ast_base *parseVarStatement(parser *Parser) {
   ast_var_statement *Stmt = (ast_var_statement *)astBaseNodeCreate(
       Parser, sizeof(ast_var_statement), AST_VAR_STATEMENT);
@@ -123,6 +128,22 @@ ast_base *parseVarStatement(parser *Parser) {
   }
 
   return (ast_base *)Stmt;
+}
+
+/* return statements:
+ * (e.g. return true;) */
+ast_base *parseRetStatement(parser *Parser) {
+  ast_return_statement *Ret = (ast_return_statement *)astBaseNodeCreate(
+      Parser, sizeof(ast_return_statement), AST_RETURN_STATEMENT);
+  nextToken(Parser);
+
+  Ret->Expr = parseExpression(Parser, PRECEDENCE_LOWEST);
+
+  if (Parser->PeekToken == TOKEN_SEMICOLON) {
+    nextToken(Parser);
+  }
+
+  return (ast_base *)Ret;
 }
 
 /* Top level expression parsing.
@@ -229,8 +250,8 @@ InfixParseFunction findInfixParseFunction(token_type Token) {
  * passed as the Left parameter, with "+ 2" being what is parsed in this
  * function) */
 ast_base *parseInfixExpression(parser *Parser, ast_base *Left) {
-  ast_base *Node =
-      astBaseNodeCreate(Parser, sizeof(ast_infix_expression), AST_INFIX_EXPRESSION);
+  ast_base *Node = astBaseNodeCreate(Parser, sizeof(ast_infix_expression),
+                                     AST_INFIX_EXPRESSION);
   ast_infix_expression Infix;
   unsigned int Precedence = PrecedenceTable[Parser->CurToken];
 
@@ -299,7 +320,8 @@ ast_base *parsePrefixExpression(parser *Parser) {
 
 /* parses an identifier (e.g. abc, foo, bar, etc.) */
 ast_base *parseIdentifier(parser *Parser) {
-  ast_base *Node = astBaseNodeCreate(Parser, sizeof(ast_identifier), AST_IDENTIFIER);
+  ast_base *Node =
+      astBaseNodeCreate(Parser, sizeof(ast_identifier), AST_IDENTIFIER);
   ast_identifier Ident;
 
   /* Set the identifier string value */
@@ -321,8 +343,8 @@ ast_base *parseIntegerLiteral(parser *Parser) {
 
 /* parses booleans true and false */
 ast_base *parseBoolean(parser *Parser) {
-  ast_boolean *Boolean =
-      (ast_boolean *)astBaseNodeCreate(Parser, sizeof(ast_boolean), AST_BOOLEAN);
+  ast_boolean *Boolean = (ast_boolean *)astBaseNodeCreate(
+      Parser, sizeof(ast_boolean), AST_BOOLEAN);
 
   Boolean->Value = Parser->CurToken == TOKEN_TRUE;
 
@@ -420,7 +442,7 @@ ast_base **parseFunctionArguments(parser *Parser) {
   /* create the first identifier */
   nextToken(Parser);
   Ident = (ast_identifier *)astBaseNodeCreate(Parser, sizeof(ast_identifier),
-                                       AST_IDENTIFIER);
+                                              AST_IDENTIFIER);
   Ident->Value = Parser->CurString;
   ArrayPush(Identifiers, (ast_base *)Ident);
 
@@ -430,7 +452,7 @@ ast_base **parseFunctionArguments(parser *Parser) {
     nextToken(Parser);
 
     Ident = (ast_identifier *)astBaseNodeCreate(Parser, sizeof(ast_identifier),
-                                         AST_IDENTIFIER);
+                                                AST_IDENTIFIER);
     Ident->Value = Parser->CurString;
     ArrayPush(Identifiers, (ast_base *)Ident);
   }
@@ -603,6 +625,11 @@ void debugPrintAstNode(ast_base *Node) {
     ast_var_statement *Stmt = (ast_var_statement *)Node;
     printf("var %s = ", Stmt->Name->Value);
     debugPrintAstNode(Stmt->Value);
+  } break;
+  case AST_RETURN_STATEMENT: {
+    ast_return_statement *Ret = (ast_return_statement *)Node;
+    printf("return ");
+    debugPrintAstNode(Ret->Expr);
   } break;
   default:
     printf("\n");
