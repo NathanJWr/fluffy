@@ -22,6 +22,7 @@ int main() {
 
   while (1) {
     ast_program *Program;
+    object *Obj;
 
     printf(">> ");
     ReadLine(ReadBuffer, &GetlineSize, stdin);
@@ -33,7 +34,12 @@ int main() {
     LexerInit(&Lexer, ReadBuffer, ReadBuffer + GetlineSize, StringStore,
               StringStoreSize);
     ParserInit(&Parser, &Lexer);
+    EvalInit();
+
     Program = ParseProgram(&Parser);
+    Obj = Eval((ast_base *)Program);
+    PrintObject(Obj);
+
     AstNodeDelete((ast_base *)Program);
   }
 

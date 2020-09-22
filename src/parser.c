@@ -83,7 +83,6 @@ ast_program *ParseProgram(parser *Parser) {
       ArrayPush(ProgramNode->Statements, Stmt);
     nextToken(Parser);
   }
-  debugPrintAstNode((ast_base *)ProgramNode);
   return ProgramNode;
 }
 

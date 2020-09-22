@@ -14,13 +14,19 @@
 /* project includes */
 #include "src/defines.h"
 #include "src/stretchy_array.h"
+#include "src/garbage_collector.h"
 #include "src/token.h"
 #include "src/lexer.h"
 #include "src/ast.h"
 #include "src/parser.h"
+#include "src/object.h"
+#include "src/evaluate.h"
 
 /* project c files */
+#include "src/garbage_collector.c"
 #include "src/ast.c"
 #include "src/parser.c"
 #include "src/lexer.c"
+#include "src/object.c"
+#include "src/evaluate.c"
 #include "src/repl.c"
