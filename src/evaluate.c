@@ -9,6 +9,8 @@ object *evalMinusPrefixOperatorExpression(object *Obj);
 object *evalInfixExpression(token_type Op, object *Left, object *Right);
 object *evalIntegerInfixExpression(token_type Op, object_integer *Left,
                                    object_integer *Right);
+object *evalBooleanInfixExpression(token_type Op, object_boolean *Left,
+                                   object_boolean *Right);
 
 void EvalInit(void) {
   NullObject.Base.Type = OBJECT_NULL;
@@ -118,9 +120,14 @@ object *evalInfixExpression(token_type Op, object *Left, object *Right) {
     switch (Left->Type) {
 
     case OBJECT_INTEGER: {
-      return (object *)evalIntegerInfixExpression(Op, (object_integer *)Left,
-                                                  (object_integer *)Right);
+      return evalIntegerInfixExpression(Op, (object_integer *)Left,
+                                        (object_integer *)Right);
     } break;
+
+    case OBJECT_BOOLEAN: {
+      return evalBooleanInfixExpression(Op, (object_boolean *)Left,
+                                        (object_boolean *)Right);
+    }
     }
   } else {
     return (object *)&NullObject;
@@ -189,5 +196,29 @@ object *evalIntegerInfixExpression(token_type Op, object_integer *Left,
   default: {
     return (object *)&NullObject;
   }
+  }
+}
+
+object *evalBooleanInfixExpression(token_type Op, object_boolean *Left,
+                                   object_boolean *Right) {
+  switch (Op) {
+
+  case TOKEN_EQ: {
+    object_boolean *Return =
+        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
+    Return->Value = Left->Value == Right->Value;
+    return (object *)Return;
+  } break;
+
+  case TOKEN_NOT_EQ: {
+    object_boolean *Return =
+        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
+    Return->Value = Left->Value != Right->Value;
+    return (object *)Return;
+  } break;
+
+  default: {
+    return (object *)&NullObject;
+  } break;
   }
 }
