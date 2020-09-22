@@ -6,6 +6,9 @@ object *evalStatements(ast_base **Statements);
 object *evalPrefixExpression(token_type Op, object *Obj);
 object *evalBangOperatorExpression(object *Ojb);
 object *evalMinusPrefixOperatorExpression(object *Obj);
+object *evalInfixExpression(token_type Op, object *Left, object *Right);
+object *evalIntegerInfixExpression(token_type Op, object_integer *Left,
+                                   object_integer *Right);
 
 void EvalInit(void) {
   NullObject.Base.Type = OBJECT_NULL;
@@ -39,6 +42,13 @@ object *Eval(ast_base *Node) {
     return evalPrefixExpression(Prefix->Operation, Right);
   } break;
 
+  case AST_INFIX_EXPRESSION: {
+    ast_infix_expression *Infix = (ast_infix_expression *)Node;
+    object *Left = Eval(Infix->Left);
+    object *Right = Eval(Infix->Right);
+    return evalInfixExpression(Infix->Operation, Left, Right);
+  } break;
+
   default:
     return (object *)&NullObject;
   }
@@ -68,19 +78,24 @@ object *evalPrefixExpression(token_type Op, object *Obj) {
 }
 
 object *evalBangOperatorExpression(object *Obj) {
+  object_boolean *Bool =
+      (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
   switch (Obj->Type) {
 
   case OBJECT_BOOLEAN: {
-    object_boolean *Bool =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
     Bool->Value = !((object_boolean *)Obj)->Value;
-    return (object *)(Bool);
+  } break;
+
+  case OBJECT_INTEGER: {
+    Bool->Value = !((object_integer *)Obj)->Value;
   } break;
 
   default: {
-    return NULL;
+    return (object *)&NullObject;
   } break;
   }
+
+  return (object *)(Bool);
 }
 
 object *evalMinusPrefixOperatorExpression(object *Obj) {
@@ -93,7 +108,86 @@ object *evalMinusPrefixOperatorExpression(object *Obj) {
   } break;
 
   default: {
-    return NULL;
+    return (object *)&NullObject;
+  }
+  }
+}
+
+object *evalInfixExpression(token_type Op, object *Left, object *Right) {
+  if (Left->Type == Right->Type) {
+    switch (Left->Type) {
+
+    case OBJECT_INTEGER: {
+      return (object *)evalIntegerInfixExpression(Op, (object_integer *)Left,
+                                                  (object_integer *)Right);
+    } break;
+    }
+  } else {
+    return (object *)&NullObject;
+  }
+}
+
+object *evalIntegerInfixExpression(token_type Op, object_integer *Left,
+                                   object_integer *Right) {
+  switch (Op) {
+  case TOKEN_PLUS: {
+    object_integer *Result =
+        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
+    Result->Value = Left->Value + Right->Value;
+    return (object *)Result;
+  } break;
+
+  case TOKEN_MINUS: {
+    object_integer *Result =
+        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
+    Result->Value = Left->Value - Right->Value;
+    return (object *)Result;
+  } break;
+
+  case TOKEN_SLASH: {
+    object_integer *Result =
+        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
+    Result->Value = Left->Value / Right->Value;
+    return (object *)Result;
+  } break;
+
+  case TOKEN_ASTERISK: {
+    object_integer *Result =
+        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
+    Result->Value = Left->Value * Right->Value;
+    return (object *)Result;
+  } break;
+
+  case TOKEN_LT: {
+    object_boolean *Result =
+        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
+    Result->Value = Left->Value < Right->Value;
+    return (object *)Result;
+  } break;
+
+  case TOKEN_GT: {
+    object_boolean *Result =
+        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
+    Result->Value = Left->Value > Right->Value;
+    return (object *)Result;
+  } break;
+
+  case TOKEN_EQ: {
+    object_boolean *Result =
+        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
+    Result->Value = Left->Value == Right->Value;
+    return (object *)Result;
+  } break;
+
+  case TOKEN_NOT_EQ: {
+    object_boolean *Result =
+        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
+    Result->Value = Left->Value != Right->Value;
+    return (object *)Result;
+  } break;
+
+  default: {
+    return (object *)&NullObject;
   }
   }
 }
