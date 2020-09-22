@@ -2,6 +2,7 @@
   X(OBJECT_INTEGER)                                                            \
   X(OBJECT_BOOLEAN)                                                            \
   X(OBJECT_NULL)                                                               \
+  X(OBJECT_RETURN)                                                             \
   XX(OJECT_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -36,6 +37,12 @@ typedef struct {
 typedef struct {
   object Base;
 } object_null;
+
+typedef struct {
+  object Base;
+
+  object *Retval;
+} object_return;
 
 object *NewObject(object_type Type, unsigned int Size);
 void PrintObject(object *Obj);

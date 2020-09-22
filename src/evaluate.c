@@ -2,7 +2,8 @@ static object_null NullObject;
 
 /* TODO: switch statements default to NULL. Implement some kind of error
  * messages */
-object *evalStatements(ast_base **Statements);
+object *evalProgram(ast_program *Program);
+object *evalBlock(ast_block_statement *Block);
 object *evalPrefixExpression(token_type Op, object *Obj);
 object *evalBangOperatorExpression(object *Ojb);
 object *evalMinusPrefixOperatorExpression(object *Obj);
@@ -22,7 +23,7 @@ object *Eval(ast_base *Node) {
   switch (Node->Type) {
 
   case AST_PROGRAM: {
-    return evalStatements(((ast_program *)Node)->Statements);
+    return evalProgram((ast_program *)Node);
   } break;
 
   case AST_INTEGER_LITERAL: {
@@ -53,7 +54,7 @@ object *Eval(ast_base *Node) {
   } break;
 
   case AST_BLOCK_STATEMENT: {
-    return evalStatements(((ast_block_statement *)Node)->Statements);
+    return evalBlock((ast_block_statement *)Node);
   } break;
 
   case AST_IF_EXPRESSION: {
@@ -68,18 +69,48 @@ object *Eval(ast_base *Node) {
     }
   } break;
 
+  case AST_RETURN_STATEMENT: {
+    object_return *Return =
+        (object_return *)NewObject(OBJECT_RETURN, sizeof(object_return));
+    object *Retval = Eval(((ast_return_statement *)Node)->Expr);
+    Return->Retval = Retval;
+    return (object *)Return;
+  } break;
+
   default:
     return (object *)&NullObject;
   }
 }
 
-object *evalStatements(ast_base **Statements) {
+object *evalProgram(ast_program *Program) {
   object *Result;
+  ast_base **Statements = Program->Statements;
   unsigned int StatementsSize = ArraySize(Statements);
   unsigned int i;
 
   for (i = 0; i < StatementsSize; i++) {
     Result = Eval(Statements[i]);
+
+    if (Result->Type == OBJECT_RETURN) {
+      return ((object_return *)Result)->Retval;
+    }
+  }
+
+  return Result;
+}
+
+object *evalBlock(ast_block_statement *Block) {
+  object *Result;
+  ast_base **Statements = Block->Statements;
+  unsigned int StatementsSize = ArraySize(Statements);
+  unsigned int i;
+
+  for (i = 0; i < StatementsSize; i++) {
+    Result = Eval(Statements[i]);
+
+    if (Result->Type == OBJECT_RETURN) {
+      return Result;
+    }
   }
 
   return Result;
