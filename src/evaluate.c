@@ -11,6 +11,7 @@ object *evalIntegerInfixExpression(token_type Op, object_integer *Left,
                                    object_integer *Right);
 object *evalBooleanInfixExpression(token_type Op, object_boolean *Left,
                                    object_boolean *Right);
+bool isTruthy(object *Obj);
 
 void EvalInit(void) {
   NullObject.Base.Type = OBJECT_NULL;
@@ -49,6 +50,22 @@ object *Eval(ast_base *Node) {
     object *Left = Eval(Infix->Left);
     object *Right = Eval(Infix->Right);
     return evalInfixExpression(Infix->Operation, Left, Right);
+  } break;
+
+  case AST_BLOCK_STATEMENT: {
+    return evalStatements(((ast_block_statement *)Node)->Statements);
+  } break;
+
+  case AST_IF_EXPRESSION: {
+    ast_if_expression *IfExpr = (ast_if_expression *)Node;
+    object *Cond = Eval(IfExpr->Condition);
+    if (isTruthy(Cond)) {
+      return Eval(IfExpr->Consequence);
+    } else if (IfExpr->Alternative) {
+      return Eval(IfExpr->Alternative);
+    } else {
+      return (object *)&NullObject;
+    }
   } break;
 
   default:
@@ -219,6 +236,23 @@ object *evalBooleanInfixExpression(token_type Op, object_boolean *Left,
 
   default: {
     return (object *)&NullObject;
+  } break;
+  }
+}
+
+bool isTruthy(object *Obj) {
+  switch (Obj->Type) {
+  case OBJECT_NULL: {
+    return false;
+  } break;
+  case OBJECT_BOOLEAN: {
+    return ((object_boolean *)Obj)->Value;
+  } break;
+  case OBJECT_INTEGER: {
+    return ((object_integer *)Obj)->Value != 0;
+  }
+  default: {
+    return true;
   } break;
   }
 }
