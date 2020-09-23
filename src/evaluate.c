@@ -1,4 +1,5 @@
 static object_null NullObject;
+static environment BaseEnv;
 
 /* TODO: switch statements default to NULL. Implement some kind of error
  * messages */
@@ -17,6 +18,8 @@ bool isTruthy(object *Obj);
 void EvalInit(void) {
   NullObject.Base.Type = OBJECT_NULL;
   NullObject.Base.Size = 0;
+
+  InitEnv(&BaseEnv, 4);
 }
 
 object *Eval(ast_base *Node) {
@@ -88,6 +91,27 @@ object *Eval(ast_base *Node) {
     Return->Retval = Retval;
     return (object *)Return;
   } break;
+
+  case AST_VAR_STATEMENT: {
+    ast_var_statement *Stmt = (ast_var_statement *)Node;
+    object *Val = Eval(Stmt->Value);
+    if (Val->Type == OBJECT_ERROR) {
+      return Val;
+    }
+
+    AddToEnv(&BaseEnv, (char *)Stmt->Name->Value, Val);
+    return (object *)&NullObject;
+  } break;
+
+  case AST_IDENTIFIER: {
+    ast_identifier *Ident = (ast_identifier *)Node;
+    object *Obj = FindInEnv(&BaseEnv, Ident->Value);
+    if (Obj) {
+      return Obj;
+    } else {
+      return (object *)&NullObject;
+    }
+  }
 
   default:
     return (object *)&NullObject;

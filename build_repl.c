@@ -21,6 +21,7 @@
 #include "src/ast.h"
 #include "src/parser.h"
 #include "src/object.h"
+#include "src/environment.h"
 #include "src/evaluate.h"
 
 /* project c files */
@@ -29,5 +30,6 @@
 #include "src/parser.c"
 #include "src/lexer.c"
 #include "src/object.c"
+#include "src/environment.c"
 #include "src/evaluate.c"
 #include "src/repl.c"

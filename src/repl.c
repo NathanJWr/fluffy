@@ -20,6 +20,7 @@ int main() {
   size_t GetlineSize;
   char *ReadBuffer = malloc(ReadBufferSize);
 
+  EvalInit();
   while (1) {
     ast_program *Program;
     object *Obj;
@@ -34,7 +35,6 @@ int main() {
     LexerInit(&Lexer, ReadBuffer, ReadBuffer + GetlineSize, StringStore,
               StringStoreSize);
     ParserInit(&Parser, &Lexer);
-    EvalInit();
 
     Program = ParseProgram(&Parser);
     Obj = Eval((ast_base *)Program);
