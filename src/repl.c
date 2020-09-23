@@ -13,14 +13,19 @@ void ReadLine(char *Buffer, size_t *SizeRead, FILE *ReadLocation) {
 int main() {
   lexer Lexer;
   parser Parser;
+  unsigned int i;
   unsigned int StringStoreSize = 0x10000;
-  char *StringStore = malloc(StringStoreSize);
-
   size_t ReadBufferSize = 0x1000;
   size_t GetlineSize;
+  environment *Env = CreateEnvironment();
+  ast_base **Programs = NULL;
+
+  char *StringStore = malloc(StringStoreSize);
+  char *StringStoreBegin = StringStore;
   char *ReadBuffer = malloc(ReadBufferSize);
 
   EvalInit();
+
   while (1) {
     ast_program *Program;
     object *Obj;
@@ -37,13 +42,22 @@ int main() {
     ParserInit(&Parser, &Lexer);
 
     Program = ParseProgram(&Parser);
-    Obj = Eval((ast_base *)Program);
+    Obj = Eval((ast_base *)Program, Env);
     PrintObject(Obj);
 
-    AstNodeDelete((ast_base *)Program);
+    ArrayPush(Programs, (ast_base *) Program);
+
+    Lexer.StringStorage += strlen(Lexer.StringStorage) + 1;
+    StringStoreSize -= Lexer.StringStorage - StringStore;
+    StringStore = Lexer.StringStorage;
+  }
+
+  for (i = 0; i < ArraySize(Programs); i++) {
+    AstNodeDelete(Programs[i]);
   }
 
   free(ReadBuffer);
-  free(StringStore);
+  free(StringStoreBegin);
+  FreeEnvironemnt(Env);
   return 0;
 }

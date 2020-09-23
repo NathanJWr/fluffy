@@ -1,2 +1,2 @@
 void EvalInit(void);
-object *Eval(ast_base *Node);
+object *Eval(ast_base *Node, environment *Env);

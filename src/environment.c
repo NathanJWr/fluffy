@@ -1,3 +1,12 @@
+typedef struct environment_ll {
+  environment Env;
+
+  struct environment_ll *Prev;
+  struct environment_ll *Next;
+} environment_ll;
+
+environment_ll *EnvironmentsHead;
+
 size_t hashString(const char *Str) {
   size_t Hash = 5381;
   int c;
@@ -89,10 +98,9 @@ void InitEnv(environment *Env, unsigned int Size) {
   }
 }
 
-void AddToEnv(environment *Env, char *Var, object *Obj) {
+void AddToEnv(environment *Env, const char *Var, object *Obj) {
   size_t Hash;
   unsigned int Index;
-  char *VarCopy;
 
   possiblRehashAndResize(Env);
 
@@ -101,9 +109,8 @@ void AddToEnv(environment *Env, char *Var, object *Obj) {
   Hash = hashString(Var);
   Index = fastModulus(Hash, Env->ObjectsLength);
 
-  VarCopy = malloc(strlen(Var) + 1);
-  strcpy(VarCopy, Var);
-  object_bucket Item = {.ProbeSequenceLength = 0, .Var = VarCopy, .Obj = Obj};
+  object_bucket Item = {
+      .ProbeSequenceLength = 0, .Var = (char *)Var, .Obj = Obj};
 
   /* Check if the index is empty. If it is we can put our Obj right there */
   if (isBucketEmpty(Env->Objects, Index)) {
@@ -141,4 +148,42 @@ object *FindInEnv(environment *Env, const char *Var) {
   }
 
   return NULL;
+}
+
+environment *CreateEnclosedEnvironment(environment *Outer) {
+  environment *NewEnv = CreateEnvironment();
+  NewEnv->Outer = Outer;
+  return NewEnv;
+}
+
+environment *CreateEnvironment(void) {
+  environment_ll *Env = malloc(sizeof(environment_ll));
+  InitEnv(&Env->Env, 4);
+
+  if (EnvironmentsHead) {
+    Env->Next = EnvironmentsHead;
+    EnvironmentsHead->Prev = Env;
+  }
+  EnvironmentsHead = Env;
+
+  return (environment *)Env;
+}
+
+void FreeEnvironemnt(environment *Env) {
+  environment_ll *EnvLL = (environment_ll *)Env;
+
+  if (EnvLL == EnvironmentsHead) {
+    EnvironmentsHead = EnvLL->Next;
+  }
+
+  if (EnvLL->Next != NULL) {
+    EnvLL->Next->Prev = EnvLL->Prev;
+  }
+
+  if (EnvLL->Prev != NULL) {
+    EnvLL->Prev->Next = EnvLL->Next;
+  }
+
+  free(EnvLL->Env.Objects);
+  free(EnvLL);
 }

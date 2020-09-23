@@ -271,7 +271,7 @@ ast_base *parseInfixExpression(parser *Parser, ast_base *Left) {
 ast_base *parseFunctionCallExppression(parser *Parser, ast_base *left) {
   ast_function_call *Call = (ast_function_call *)astBaseNodeCreate(
       Parser, sizeof(ast_function_call), AST_FUNCTION_CALL);
-  Call->FunctionName = Parser->CurString;
+  Call->FunctionName = parseIdentifier(Parser);
   Call->Arguments = parseFunctionCallArguments(Parser);
   return (ast_base *)Call;
 }
@@ -610,7 +610,7 @@ void debugPrintAstNode(ast_base *Node) {
     ast_function_call *Call = (ast_function_call *)Node;
     unsigned int i;
 
-    printf("%s(", Call->FunctionName);
+    printf("%s(", ((ast_identifier *)Call->FunctionName)->Value);
     if (Call->Arguments) {
       for (i = 0; i < ArraySize(Call->Arguments) - 1; i++) {
         debugPrintAstNode(Call->Arguments[i]);

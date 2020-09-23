@@ -1,10 +1,10 @@
 static object_null NullObject;
-static environment BaseEnv;
 
 /* TODO: switch statements default to NULL. Implement some kind of error
  * messages */
-object *evalProgram(ast_program *Program);
-object *evalBlock(ast_block_statement *Block);
+object *evalProgram(ast_program *Program, environment *Env);
+object *evalBlock(ast_block_statement *Block, environment *Env);
+object **evalExpressions(ast_base **Exprs, environment *Env);
 object *evalPrefixExpression(token_type Op, object *Obj);
 object *evalBangOperatorExpression(object *Ojb);
 object *evalMinusPrefixOperatorExpression(object *Obj);
@@ -14,19 +14,21 @@ object *evalIntegerInfixExpression(token_type Op, object_integer *Left,
 object *evalBooleanInfixExpression(token_type Op, object_boolean *Left,
                                    object_boolean *Right);
 bool isTruthy(object *Obj);
+object *applyFunction(object *Fn, object **Args);
+environment *extendFnEnv(object_function *Fn, object **Args,
+                         unsigned int ArgsLength);
+object *unwrapReturnValue(object *Obj);
 
 void EvalInit(void) {
   NullObject.Base.Type = OBJECT_NULL;
   NullObject.Base.Size = 0;
-
-  InitEnv(&BaseEnv, 4);
 }
 
-object *Eval(ast_base *Node) {
+object *Eval(ast_base *Node, environment *Env) {
   switch (Node->Type) {
 
   case AST_PROGRAM: {
-    return evalProgram((ast_program *)Node);
+    return evalProgram((ast_program *)Node, Env);
   } break;
 
   case AST_INTEGER_LITERAL: {
@@ -45,7 +47,7 @@ object *Eval(ast_base *Node) {
 
   case AST_PREFIX_EXPRESSION: {
     ast_prefix_expression *Prefix = (ast_prefix_expression *)Node;
-    object *Right = Eval(Prefix->Right);
+    object *Right = Eval(Prefix->Right, Env);
     if (Right->Type == OBJECT_ERROR) {
       return Right;
     }
@@ -54,8 +56,8 @@ object *Eval(ast_base *Node) {
 
   case AST_INFIX_EXPRESSION: {
     ast_infix_expression *Infix = (ast_infix_expression *)Node;
-    object *Left = Eval(Infix->Left);
-    object *Right = Eval(Infix->Right);
+    object *Left = Eval(Infix->Left, Env);
+    object *Right = Eval(Infix->Right, Env);
     if (Left->Type == OBJECT_ERROR) {
       return Left;
     }
@@ -66,19 +68,19 @@ object *Eval(ast_base *Node) {
   } break;
 
   case AST_BLOCK_STATEMENT: {
-    return evalBlock((ast_block_statement *)Node);
+    return evalBlock((ast_block_statement *)Node, Env);
   } break;
 
   case AST_IF_EXPRESSION: {
     ast_if_expression *IfExpr = (ast_if_expression *)Node;
-    object *Cond = Eval(IfExpr->Condition);
+    object *Cond = Eval(IfExpr->Condition, Env);
     if (Cond->Type == OBJECT_ERROR) {
       return Cond;
     }
     if (isTruthy(Cond)) {
-      return Eval(IfExpr->Consequence);
+      return Eval(IfExpr->Consequence, Env);
     } else if (IfExpr->Alternative) {
-      return Eval(IfExpr->Alternative);
+      return Eval(IfExpr->Alternative, Env);
     } else {
       return (object *)&NullObject;
     }
@@ -87,25 +89,25 @@ object *Eval(ast_base *Node) {
   case AST_RETURN_STATEMENT: {
     object_return *Return =
         (object_return *)NewObject(OBJECT_RETURN, sizeof(object_return));
-    object *Retval = Eval(((ast_return_statement *)Node)->Expr);
+    object *Retval = Eval(((ast_return_statement *)Node)->Expr, Env);
     Return->Retval = Retval;
     return (object *)Return;
   } break;
 
   case AST_VAR_STATEMENT: {
     ast_var_statement *Stmt = (ast_var_statement *)Node;
-    object *Val = Eval(Stmt->Value);
+    object *Val = Eval(Stmt->Value, Env);
     if (Val->Type == OBJECT_ERROR) {
       return Val;
     }
 
-    AddToEnv(&BaseEnv, (char *)Stmt->Name->Value, Val);
+    AddToEnv(Env, (char *)Stmt->Name->Value, Val);
     return (object *)&NullObject;
   } break;
 
   case AST_IDENTIFIER: {
     ast_identifier *Ident = (ast_identifier *)Node;
-    object *Obj = FindInEnv(&BaseEnv, Ident->Value);
+    object *Obj = FindInEnv(Env, Ident->Value);
     if (Obj) {
       return Obj;
     } else {
@@ -119,7 +121,19 @@ object *Eval(ast_base *Node) {
         (object_function *)NewObject(OBJECT_FUNCTION, sizeof(object_function));
     FnObj->Parameters = (ast_identifier **)Fn->Parameters;
     FnObj->Body = (ast_block_statement *)Fn->Body;
+    FnObj->Env = Env;
     return (object *)FnObj;
+  } break;
+
+  case AST_FUNCTION_CALL: {
+    ast_function_call *Call = (ast_function_call *)Node;
+    object *Fn = Eval(Call->FunctionName, Env);
+    object **Exprs = evalExpressions(Call->Arguments, Env);
+    if (Exprs[ArraySize(Exprs) - 1]->Type == OBJECT_ERROR) {
+      return Exprs[ArraySize(Exprs) - 1];
+    }
+
+    return applyFunction(Fn, Exprs);
   } break;
 
   default:
@@ -127,14 +141,78 @@ object *Eval(ast_base *Node) {
   }
 }
 
-object *evalProgram(ast_program *Program) {
+object *applyFunction(object *Fn, object **Args) {
+  object_function *Function;
+  unsigned int ArgsLength;
+  unsigned int ParamsLength;
+
+  if (Fn->Type != OBJECT_FUNCTION) {
+    return NewError("not a function: %s", ObjectType[Fn->Type]);
+  }
+
+  Function = (object_function *)Fn;
+  ArgsLength = ArraySize(Args);
+  ParamsLength = ArraySize(Function->Parameters);
+
+  if (ArgsLength != ParamsLength) {
+    return NewError(
+        "invalid number of arguments to fn: expected %d, recieved %d",
+        ParamsLength, ArgsLength);
+  }
+  environment *ExtendedEnv = extendFnEnv(Function, Args, ArgsLength);
+
+  object *Evaluated = Eval((ast_base *)Function->Body, ExtendedEnv);
+
+  object *RetObj = unwrapReturnValue(Evaluated);
+  FreeEnvironemnt(ExtendedEnv);
+  return RetObj;
+}
+
+environment *extendFnEnv(object_function *Fn, object **Args,
+                         unsigned int ArgsLength) {
+  environment *Env = CreateEnclosedEnvironment(Fn->Env);
+  unsigned int i;
+
+  for (i = 0; i < ArgsLength; i++) {
+    const char *Var = Fn->Parameters[i]->Value;
+    object *Obj = Args[i];
+
+    AddToEnv(Env, Var, Obj);
+  }
+
+  return Env;
+}
+
+object *unwrapReturnValue(object *Obj) {
+  if (Obj->Type == OBJECT_RETURN) {
+    return ((object_return *)Obj)->Retval;
+  }
+  return Obj;
+}
+
+object **evalExpressions(ast_base **Exprs, environment *Env) {
+  object **Result = NULL;
+  unsigned int i;
+  unsigned int ExprsLength = ArraySize(Exprs);
+
+  for (i = 0; i < ExprsLength; i++) {
+    object *Evaluated = Eval(Exprs[i], Env);
+    ArrayPush(Result, Evaluated);
+    if (Evaluated->Type == OBJECT_ERROR) {
+      return Result;
+    }
+  }
+  return Result;
+}
+
+object *evalProgram(ast_program *Program, environment *Env) {
   object *Result;
   ast_base **Statements = Program->Statements;
   unsigned int StatementsSize = ArraySize(Statements);
   unsigned int i;
 
   for (i = 0; i < StatementsSize; i++) {
-    Result = Eval(Statements[i]);
+    Result = Eval(Statements[i], Env);
 
     if (Result->Type == OBJECT_RETURN) {
       return ((object_return *)Result)->Retval;
@@ -144,14 +222,14 @@ object *evalProgram(ast_program *Program) {
   return Result;
 }
 
-object *evalBlock(ast_block_statement *Block) {
+object *evalBlock(ast_block_statement *Block, environment *Env) {
   object *Result;
   ast_base **Statements = Block->Statements;
   unsigned int StatementsSize = ArraySize(Statements);
   unsigned int i;
 
   for (i = 0; i < StatementsSize; i++) {
-    Result = Eval(Statements[i]);
+    Result = Eval(Statements[i], Env);
 
     if (Result->Type == OBJECT_RETURN) {
       return Result;
