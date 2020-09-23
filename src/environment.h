@@ -4,7 +4,7 @@ typedef struct {
   object *Obj;
 } object_bucket;
 
-typedef struct {
+typedef struct environment {
   object_bucket *Objects;
   unsigned int ObjectsLength;
   unsigned int ObjectsExist;

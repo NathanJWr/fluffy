@@ -14,8 +14,8 @@ object *NewError(const char *Message, ...) {
   va_start(args2, Message);
 
   StringSize = vsnprintf(NULL, 0, Message, args1);
-  Err = (object_error *)NewObject(
-      OBJECT_ERROR, sizeof(object_error) + StringSize + 1);
+  Err = (object_error *)NewObject(OBJECT_ERROR,
+                                  sizeof(object_error) + StringSize + 1);
 
   vsprintf(Err->Message, Message, args2);
   va_end(args1);
@@ -40,6 +40,22 @@ void PrintObject(object *Obj) {
 
   case OBJECT_ERROR: {
     printf("Error: %s", ((object_error *)Obj)->Message);
+  } break;
+
+  case OBJECT_FUNCTION: {
+    unsigned int i;
+    object_function *Fn = (object_function *)Obj;
+    printf("fn(");
+
+    /* Print the parameters */
+    for (i = 0; i < ArraySize(Fn->Parameters) - 1; i++) {
+      printf("%s, ", Fn->Parameters[i]->Value);
+    }
+    printf("%s", Fn->Parameters[i]->Value);
+
+    printf(") { ");
+    debugPrintAstNode((ast_base *)Fn->Body);
+    printf(" }");
   } break;
 
   default: {

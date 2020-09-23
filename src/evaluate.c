@@ -111,7 +111,16 @@ object *Eval(ast_base *Node) {
     } else {
       return (object *)&NullObject;
     }
-  }
+  } break;
+
+  case AST_FUNCTION_LITERAL: {
+    ast_function_literal *Fn = (ast_function_literal *)Node;
+    object_function *FnObj =
+        (object_function *)NewObject(OBJECT_FUNCTION, sizeof(object_function));
+    FnObj->Parameters = (ast_identifier **)Fn->Parameters;
+    FnObj->Body = (ast_block_statement *)Fn->Body;
+    return (object *)FnObj;
+  } break;
 
   default:
     return (object *)&NullObject;
