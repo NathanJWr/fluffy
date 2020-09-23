@@ -43,6 +43,9 @@ object *Eval(ast_base *Node) {
   case AST_PREFIX_EXPRESSION: {
     ast_prefix_expression *Prefix = (ast_prefix_expression *)Node;
     object *Right = Eval(Prefix->Right);
+    if (Right->Type == OBJECT_ERROR) {
+      return Right;
+    }
     return evalPrefixExpression(Prefix->Operation, Right);
   } break;
 
@@ -50,6 +53,12 @@ object *Eval(ast_base *Node) {
     ast_infix_expression *Infix = (ast_infix_expression *)Node;
     object *Left = Eval(Infix->Left);
     object *Right = Eval(Infix->Right);
+    if (Left->Type == OBJECT_ERROR) {
+      return Left;
+    }
+    if (Right->Type == OBJECT_ERROR) {
+      return Right;
+    }
     return evalInfixExpression(Infix->Operation, Left, Right);
   } break;
 
@@ -60,6 +69,9 @@ object *Eval(ast_base *Node) {
   case AST_IF_EXPRESSION: {
     ast_if_expression *IfExpr = (ast_if_expression *)Node;
     object *Cond = Eval(IfExpr->Condition);
+    if (Cond->Type == OBJECT_ERROR) {
+      return Cond;
+    }
     if (isTruthy(Cond)) {
       return Eval(IfExpr->Consequence);
     } else if (IfExpr->Alternative) {
@@ -124,28 +136,34 @@ object *evalPrefixExpression(token_type Op, object *Obj) {
   case TOKEN_MINUS: {
     return evalMinusPrefixOperatorExpression(Obj);
   }
+  default: {
+    return NewError("unknown operator: %s on %s", TokenType[Op],
+                    ObjectType[Obj->Type]);
+  }
   }
 }
 
 object *evalBangOperatorExpression(object *Obj) {
-  object_boolean *Bool =
-      (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
   switch (Obj->Type) {
 
   case OBJECT_BOOLEAN: {
+    object_boolean *Bool =
+        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
     Bool->Value = !((object_boolean *)Obj)->Value;
+    return (object *)(Bool);
   } break;
 
   case OBJECT_INTEGER: {
+    object_boolean *Bool =
+        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
     Bool->Value = !((object_integer *)Obj)->Value;
+    return (object *)(Bool);
   } break;
 
   default: {
-    return (object *)&NullObject;
+    return NewError("unknown operator: !%s", ObjectType[Obj->Type]);
   } break;
   }
-
-  return (object *)(Bool);
 }
 
 object *evalMinusPrefixOperatorExpression(object *Obj) {
@@ -158,7 +176,7 @@ object *evalMinusPrefixOperatorExpression(object *Obj) {
   } break;
 
   default: {
-    return (object *)&NullObject;
+    return NewError("unknown operator: -%s", ObjectType[Obj->Type]);
   }
   }
 }
@@ -175,10 +193,15 @@ object *evalInfixExpression(token_type Op, object *Left, object *Right) {
     case OBJECT_BOOLEAN: {
       return evalBooleanInfixExpression(Op, (object_boolean *)Left,
                                         (object_boolean *)Right);
+    } break;
+
+    default: {
+      return NewError("unsupported type %s in infix expression", TokenType[Op]);
     }
     }
   } else {
-    return (object *)&NullObject;
+    return NewError("type mismatch: %s, %s", ObjectType[Left->Type],
+                    ObjectType[Right->Type]);
   }
 }
 
@@ -242,7 +265,8 @@ object *evalIntegerInfixExpression(token_type Op, object_integer *Left,
   } break;
 
   default: {
-    return (object *)&NullObject;
+    return NewError("unknown operator: %s %s %s", ObjectType[Left->Base.Type],
+                    TokenType[Op], ObjectType[Right->Base.Type]);
   }
   }
 }

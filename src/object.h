@@ -3,6 +3,7 @@
   X(OBJECT_BOOLEAN)                                                            \
   X(OBJECT_NULL)                                                               \
   X(OBJECT_RETURN)                                                             \
+  X(OBJECT_ERROR)                                                              \
   XX(OJECT_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -44,5 +45,12 @@ typedef struct {
   object *Retval;
 } object_return;
 
+typedef struct {
+  object Base;
+
+  char Message[];
+} object_error;
+
 object *NewObject(object_type Type, unsigned int Size);
+object *NewError(const char *Message, ...);
 void PrintObject(object *Obj);
