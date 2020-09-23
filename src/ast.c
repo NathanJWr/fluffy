@@ -73,6 +73,7 @@ void AstFunctionLiteralDelete(ast_function_literal *Func) {
   for (i = 0; i < ParametersSize; i++) {
     AstNodeDelete(Func->Parameters[i]);
   }
+  ArrayFree(Func->Parameters);
   AstNodeDelete(Func->Body);
   free(Func);
 }
@@ -83,6 +84,7 @@ void AstFunctionCallDelete(ast_function_call *Call) {
   for (i = 0; i < ArgumentsSize; i++) {
     AstNodeDelete(Call->Arguments[i]);
   }
+  ArrayFree(Call->Arguments);
   free(Call);
 }
 
