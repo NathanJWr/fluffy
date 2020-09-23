@@ -20,10 +20,7 @@ void findSpotForKey(object_bucket *Objects, object_bucket Item,
                     unsigned int Index, unsigned int BucketLength) {
   /* Start at the index and move forward till we've met the requirements of
    * Robin Hood hashing */
-  unsigned int InsertionIndex = Index + 1;
-  if (InsertionIndex > BucketLength - 1) {
-    InsertionIndex = 0;
-  }
+  unsigned int InsertionIndex = Index;
   while (Item.ProbeSequenceLength <=
          Objects[InsertionIndex].ProbeSequenceLength) {
     InsertionIndex++;
