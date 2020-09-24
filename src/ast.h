@@ -94,7 +94,7 @@ typedef struct {
 typedef struct {
   ast_base Base;
 
-  const char *FunctionName;
+  ast_base *FunctionName;
   ast_base **Arguments;
 } ast_function_call;
 
