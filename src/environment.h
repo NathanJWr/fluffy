@@ -17,3 +17,4 @@ void AddToEnv(environment *Env, const char *Var, object *Obj);
 
 environment *CreateEnvironment(void);
 environment *CreateEnclosedEnvironment(environment *Outer);
+void EnvironmentMarkFromRoots(void);

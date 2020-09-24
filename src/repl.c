@@ -44,20 +44,24 @@ int main() {
     Program = ParseProgram(&Parser);
     Obj = Eval((ast_base *)Program, Env);
     PrintObject(Obj);
+    ArrayPush(Programs, (ast_base *)Program);
 
-    ArrayPush(Programs, (ast_base *) Program);
-
+    /* Hacky things to keep pointers from being invalidated */
     Lexer.StringStorage += strlen(Lexer.StringStorage) + 1;
     StringStoreSize -= Lexer.StringStorage - StringStore;
     StringStore = Lexer.StringStorage;
+
+    GCMarkAndSweep();
   }
 
   for (i = 0; i < ArraySize(Programs); i++) {
     AstNodeDelete(Programs[i]);
   }
+  ArrayFree(Programs);
 
   free(ReadBuffer);
   free(StringStoreBegin);
   FreeEnvironemnt(Env);
+  GCMarkAndSweep();
   return 0;
 }

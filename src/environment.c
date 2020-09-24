@@ -90,6 +90,7 @@ void InitEnv(environment *Env, unsigned int Size) {
   /* Note: Using power of two array sizes for faster modulus */
   unsigned int i;
   Env->ObjectsLength = Size;
+  Env->ObjectsExist = 0;
   Env->Objects = malloc(sizeof(object_bucket) * Env->ObjectsLength);
 
   /* Set all the ProbeSequenceLengths to -1 so we know what slots are empty */
@@ -101,6 +102,7 @@ void InitEnv(environment *Env, unsigned int Size) {
 void AddToEnv(environment *Env, const char *Var, object *Obj) {
   size_t Hash;
   unsigned int Index;
+  object_bucket Item;
 
   possiblRehashAndResize(Env);
 
@@ -109,8 +111,8 @@ void AddToEnv(environment *Env, const char *Var, object *Obj) {
   Hash = hashString(Var);
   Index = fastModulus(Hash, Env->ObjectsLength);
 
-  object_bucket Item = {
-      .ProbeSequenceLength = 0, .Var = (char *)Var, .Obj = Obj};
+  Item =
+      (object_bucket){.ProbeSequenceLength = 0, .Var = (char *)Var, .Obj = Obj};
 
   /* Check if the index is empty. If it is we can put our Obj right there */
   if (isBucketEmpty(Env->Objects, Index)) {
@@ -158,6 +160,8 @@ environment *CreateEnclosedEnvironment(environment *Outer) {
 
 environment *CreateEnvironment(void) {
   environment_ll *Env = malloc(sizeof(environment_ll));
+  Env->Next = NULL;
+  Env->Prev = NULL;
   InitEnv(&Env->Env, 4);
 
   if (EnvironmentsHead) {
@@ -186,4 +190,23 @@ void FreeEnvironemnt(environment *Env) {
 
   free(EnvLL->Env.Objects);
   free(EnvLL);
+}
+
+void markAllObjectsInEnv(environment *Env) {
+  unsigned int i;
+  for (i = 0; i < Env->ObjectsLength; i++) {
+    if (!isBucketEmpty(Env->Objects, i)) {
+      object_bucket *Bucket = &Env->Objects[i];
+      GCMarkAllocation(Bucket->Obj);
+    }
+  }
+}
+
+void EnvironmentMarkFromRoots(void) {
+  environment_ll *Head = EnvironmentsHead;
+  while (Head) {
+    environment *Env = &Head->Env;
+    markAllObjectsInEnv(Env);
+    Head = Head->Next;
+  }
 }

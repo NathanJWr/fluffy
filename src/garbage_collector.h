@@ -21,3 +21,5 @@
  * */
 
 void *GCMalloc(unsigned int Size);
+void GCMarkAllocation(void *Allocation);
+void GCMarkAndSweep(void);

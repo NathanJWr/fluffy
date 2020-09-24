@@ -271,7 +271,7 @@ ast_base *parseInfixExpression(parser *Parser, ast_base *Left) {
 ast_base *parseFunctionCallExppression(parser *Parser, ast_base *left) {
   ast_function_call *Call = (ast_function_call *)astBaseNodeCreate(
       Parser, sizeof(ast_function_call), AST_FUNCTION_CALL);
-  Call->FunctionName = parseIdentifier(Parser);
+  Call->FunctionName = left;
   Call->Arguments = parseFunctionCallArguments(Parser);
   return (ast_base *)Call;
 }

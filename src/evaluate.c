@@ -129,11 +129,15 @@ object *Eval(ast_base *Node, environment *Env) {
     ast_function_call *Call = (ast_function_call *)Node;
     object *Fn = Eval(Call->FunctionName, Env);
     object **Exprs = evalExpressions(Call->Arguments, Env);
+    object *RetObject = NULL;
+
     if (Exprs[ArraySize(Exprs) - 1]->Type == OBJECT_ERROR) {
       return Exprs[ArraySize(Exprs) - 1];
     }
 
-    return applyFunction(Fn, Exprs);
+    RetObject = applyFunction(Fn, Exprs);
+    ArrayFree(Exprs);
+    return RetObject;
   } break;
 
   default:
@@ -145,6 +149,9 @@ object *applyFunction(object *Fn, object **Args) {
   object_function *Function;
   unsigned int ArgsLength;
   unsigned int ParamsLength;
+
+  environment *ExtendedEnv = NULL;
+  object *EvaluatedObject = NULL;
 
   if (Fn->Type != OBJECT_FUNCTION) {
     return NewError("not a function: %s", ObjectType[Fn->Type]);
@@ -159,13 +166,13 @@ object *applyFunction(object *Fn, object **Args) {
         "invalid number of arguments to fn: expected %d, recieved %d",
         ParamsLength, ArgsLength);
   }
-  environment *ExtendedEnv = extendFnEnv(Function, Args, ArgsLength);
 
-  object *Evaluated = Eval((ast_base *)Function->Body, ExtendedEnv);
-
-  object *RetObj = unwrapReturnValue(Evaluated);
+  ExtendedEnv = extendFnEnv(Function, Args, ArgsLength);
+  EvaluatedObject = Eval((ast_base *)Function->Body, ExtendedEnv);
+  EvaluatedObject = unwrapReturnValue(EvaluatedObject);
   FreeEnvironemnt(ExtendedEnv);
-  return RetObj;
+
+  return EvaluatedObject;
 }
 
 environment *extendFnEnv(object_function *Fn, object **Args,
