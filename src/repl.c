@@ -14,16 +14,21 @@ int main() {
   lexer Lexer;
   parser Parser;
   unsigned int i;
+
   unsigned int StringStoreSize = 0x10000;
+  char *StringStore;
+  char *StringStoreBegin;
+
   size_t ReadBufferSize = 0x1000;
+  char *ReadBuffer;
+
   size_t GetlineSize;
-  environment *Env = CreateEnvironment();
   ast_base **Programs = NULL;
+  environment *Env = CreateEnvironment();
 
-  char *StringStore = malloc(StringStoreSize);
-  char *StringStoreBegin = StringStore;
-  char *ReadBuffer = malloc(ReadBufferSize);
-
+  StringStore = calloc(1, StringStoreSize);
+  ReadBuffer = calloc(1, ReadBufferSize);
+  StringStoreBegin = StringStore;
   EvalInit();
 
   while (1) {
@@ -51,7 +56,7 @@ int main() {
     StringStoreSize -= Lexer.StringStorage - StringStore;
     StringStore = Lexer.StringStorage;
 
-    GCMarkAndSweep();
+    GCMarkAndSweep(Env);
   }
 
   for (i = 0; i < ArraySize(Programs); i++) {
@@ -61,7 +66,7 @@ int main() {
 
   free(ReadBuffer);
   free(StringStoreBegin);
-  FreeEnvironemnt(Env);
-  GCMarkAndSweep();
+
+  GCSweep();
   return 0;
 }
