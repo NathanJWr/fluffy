@@ -1,12 +1,3 @@
-typedef struct environment_ll {
-  environment Env;
-
-  struct environment_ll *Prev;
-  struct environment_ll *Next;
-} environment_ll;
-
-environment_ll *EnvironmentsHead;
-
 size_t hashString(const char *Str) {
   size_t Hash = 5381;
   int c;
@@ -89,9 +80,14 @@ void possiblRehashAndResize(environment *Env) {
 void InitEnv(environment *Env, unsigned int Size) {
   /* Note: Using power of two array sizes for faster modulus */
   unsigned int i;
+  unsigned int AllocSize = sizeof(object_bucket) * Size;
   Env->ObjectsLength = Size;
   Env->ObjectsExist = 0;
-  Env->Objects = malloc(sizeof(object_bucket) * Env->ObjectsLength);
+
+  Env->Objects = GCMalloc(AllocSize);
+  memset(Env->Objects, 0, AllocSize);
+
+  Env->Outer = NULL;
 
   /* Set all the ProbeSequenceLengths to -1 so we know what slots are empty */
   for (i = 0; i < Env->ObjectsLength; i++) {
@@ -135,7 +131,12 @@ object *FindInEnv(environment *Env, const char *Var) {
 
   /* Ideally the first Index we try is where our Var is located.
    * However, worst case is that this turns into a linear search */
-  while (IndexesTried < Env->ObjectsLength) {
+
+  /* We either look until we've tried everything in the array, or until
+   * we hit an empty slot */
+  while (IndexesTried < Env->ObjectsLength &&
+         !isBucketEmpty(Env->Objects, Index)) {
+
     if (!isBucketEmpty(Env->Objects, Index) &&
         (0 == strcmp(Env->Objects[Index].Var, Var))) {
       return Env->Objects[Index].Obj;
@@ -149,6 +150,9 @@ object *FindInEnv(environment *Env, const char *Var) {
     }
   }
 
+  if (Env->Outer) {
+    return FindInEnv(Env->Outer, Var);
+  }
   return NULL;
 }
 
@@ -159,54 +163,46 @@ environment *CreateEnclosedEnvironment(environment *Outer) {
 }
 
 environment *CreateEnvironment(void) {
-  environment_ll *Env = malloc(sizeof(environment_ll));
-  Env->Next = NULL;
-  Env->Prev = NULL;
-  InitEnv(&Env->Env, 4);
-
-  if (EnvironmentsHead) {
-    Env->Next = EnvironmentsHead;
-    EnvironmentsHead->Prev = Env;
-  }
-  EnvironmentsHead = Env;
-
-  return (environment *)Env;
+  environment *Env = GCMalloc(sizeof(environment));
+  InitEnv(Env, 4);
+  return Env;
 }
 
-void FreeEnvironemnt(environment *Env) {
-  environment_ll *EnvLL = (environment_ll *)Env;
-
-  if (EnvLL == EnvironmentsHead) {
-    EnvironmentsHead = EnvLL->Next;
-  }
-
-  if (EnvLL->Next != NULL) {
-    EnvLL->Next->Prev = EnvLL->Prev;
-  }
-
-  if (EnvLL->Prev != NULL) {
-    EnvLL->Prev->Next = EnvLL->Next;
-  }
-
-  free(EnvLL->Env.Objects);
-  free(EnvLL);
+void markEnvironment(environment *Env) {
+  GCMarkAllocation(Env);
+  GCMarkAllocation(Env->Objects);
 }
 
+void markAnySubObjects(object_bucket *Bucket);
 void markAllObjectsInEnv(environment *Env) {
   unsigned int i;
   for (i = 0; i < Env->ObjectsLength; i++) {
     if (!isBucketEmpty(Env->Objects, i)) {
       object_bucket *Bucket = &Env->Objects[i];
       GCMarkAllocation(Bucket->Obj);
+      markAnySubObjects(Bucket);
     }
   }
 }
 
-void EnvironmentMarkFromRoots(void) {
-  environment_ll *Head = EnvironmentsHead;
-  while (Head) {
-    environment *Env = &Head->Env;
-    markAllObjectsInEnv(Env);
-    Head = Head->Next;
+void markAnySubObjects(object_bucket *Bucket) {
+  object *Obj = Bucket->Obj;
+  switch (Obj->Type) {
+
+  case OBJECT_RETURN: {
+    GCMarkAllocation(((object_return *)Obj)->Retval);
+  } break;
+
+  case OBJECT_FUNCTION: {
+    object_function *Func = (object_function *)Obj;
+    if (!GCMarked(Func->Env)) {
+      EnvironmentMark(Func->Env);
+    }
+  } break;
   }
+}
+
+void EnvironmentMark(environment *Env) {
+  markEnvironment(Env);
+  markAllObjectsInEnv(Env);
 }

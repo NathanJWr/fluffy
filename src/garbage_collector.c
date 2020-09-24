@@ -1,4 +1,4 @@
-typedef struct gc_alloc_info { 
+typedef struct gc_alloc_info {
   struct gc_alloc_info *Next;
   struct gc_alloc_info *Prev;
 
@@ -23,8 +23,15 @@ void *GCMalloc(unsigned int Size) {
 }
 
 void GCMarkAllocation(void *Allocation) {
-  gc_alloc_info *Info = (gc_alloc_info *) ((char *) Allocation - sizeof(gc_alloc_info));
+  gc_alloc_info *Info =
+      (gc_alloc_info *)((char *)Allocation - sizeof(gc_alloc_info));
   Info->Mark = 1;
+}
+
+bool GCMarked(void *Allocation) {
+  gc_alloc_info *Info =
+      (gc_alloc_info *)((char *)Allocation - sizeof(gc_alloc_info));
+  return Info->Mark;
 }
 
 void GCRemoveNode(gc_alloc_info *Node) {
@@ -49,17 +56,17 @@ void GCSweep(void) {
     if (Head->Mark == 0) {
       gc_alloc_info *ToRemove = Head;
       Head = Head->Next;
-      GCRemoveNode(ToRemove); 
+      GCRemoveNode(ToRemove);
       continue;
     } else {
       Head->Mark = 0;
     }
 
     Head = Head->Next;
-  }  
+  }
 }
 
-void GCMarkAndSweep(void) {
-  EnvironmentMarkFromRoots();
+void GCMarkAndSweep(environment *Env) {
+  EnvironmentMark(Env);
   GCSweep();
 }

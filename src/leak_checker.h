@@ -98,6 +98,6 @@ void *LeakCheckRealloc(void *Mem, unsigned int NewSize, const char *Filename,
 
 
 #define malloc(Size) LeakCheckMalloc(__FILE__, __LINE__, Size)
-#define calloc(Size) LeakCheckCalloc(__FILE__, __LINE__, Size);
+#define calloc(Num, Size) LeakCheckCalloc(__FILE__, __LINE__, Num * Size);
 #define realloc(Ptr, Size) LeakCheckRealloc(Ptr, Size, __FILE__, __LINE__);
 #define free(Ptr) LeakCheckFree(Ptr);

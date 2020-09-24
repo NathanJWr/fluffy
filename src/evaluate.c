@@ -170,7 +170,6 @@ object *applyFunction(object *Fn, object **Args) {
   ExtendedEnv = extendFnEnv(Function, Args, ArgsLength);
   EvaluatedObject = Eval((ast_base *)Function->Body, ExtendedEnv);
   EvaluatedObject = unwrapReturnValue(EvaluatedObject);
-  FreeEnvironemnt(ExtendedEnv);
 
   return EvaluatedObject;
 }

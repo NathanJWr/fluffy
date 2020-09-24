@@ -15,13 +15,13 @@
 /* project includes */
 #include "src/defines.h"
 #include "src/stretchy_array.h"
-#include "src/garbage_collector.h"
 #include "src/token.h"
-#include "src/lexer.h"
 #include "src/ast.h"
-#include "src/parser.h"
 #include "src/object.h"
 #include "src/environment.h"
+#include "src/garbage_collector.h"
+#include "src/lexer.h"
+#include "src/parser.h"
 #include "src/evaluate.h"
 
 /* project c files */
