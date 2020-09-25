@@ -22,7 +22,12 @@ int main(int argc, char **argv) {
             "thing", TOKEN_ASSIGN, TOKEN_FALSE, TOKEN_SEMICOLON, TOKEN_RBRACE,
             TOKEN_END);
   testLexer("str == \"string\"", TOKEN_IDENT, "str", TOKEN_EQ, TOKEN_STRING,
-            *"string", TOKEN_END);
+            "string", TOKEN_END);
+  testLexer("testLexer(const char *str, ...)", TOKEN_IDENT, "testLexer",
+            TOKEN_LPAREN, TOKEN_IDENT, "const", TOKEN_IDENT, "char",
+            TOKEN_ASTERISK, TOKEN_IDENT, "str", TOKEN_COMMA, TOKEN_ILLEGAL,
+            TOKEN_ILLEGAL, TOKEN_ILLEGAL, TOKEN_RPAREN, TOKEN_END);
+  testParser("ok");
   printf("All tests passed.\n");
   return 0;
 }
