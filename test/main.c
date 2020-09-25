@@ -4,6 +4,7 @@
 int main(int argc, char **argv) {
   isDebug = (argc > 1 && 0 == strcmp("-d", argv[1]));
   printf("Executing tests.\n");
+  /* LEXER TESTING */
   testLexer("<hello> ", TOKEN_LT, TOKEN_IDENT, "hello", TOKEN_GT, TOKEN_END);
   testLexer("<hello >", TOKEN_LT, TOKEN_IDENT, "hello", TOKEN_GT, TOKEN_END);
   testLexer("< hello>", TOKEN_LT, TOKEN_IDENT, "hello", TOKEN_GT, TOKEN_END);
@@ -27,7 +28,9 @@ int main(int argc, char **argv) {
             TOKEN_LPAREN, TOKEN_IDENT, "const", TOKEN_IDENT, "char",
             TOKEN_ASTERISK, TOKEN_IDENT, "str", TOKEN_COMMA, TOKEN_ILLEGAL,
             TOKEN_ILLEGAL, TOKEN_ILLEGAL, TOKEN_RPAREN, TOKEN_END);
-  testParser("ok");
+  /* PARSER TESTING */
+  testParser("number is 43", AST_PROGRAM, AST_IDENTIFIER, "number", AST_IDENTIFIER, "is", AST_INTEGER_LITERAL, 43);
+  testParser("-20", AST_PROGRAM, AST_PREFIX_EXPRESSION, TOKEN_MINUS, AST_INTEGER_LITERAL, 20);
   printf("All tests passed.\n");
   return 0;
 }
