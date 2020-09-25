@@ -27,6 +27,7 @@ int main(int argc, char **argv) {
             TOKEN_LPAREN, TOKEN_IDENT, "const", TOKEN_IDENT, "char",
             TOKEN_ASTERISK, TOKEN_IDENT, "str", TOKEN_COMMA, TOKEN_ILLEGAL,
             TOKEN_ILLEGAL, TOKEN_ILLEGAL, TOKEN_RPAREN, TOKEN_END);
+  testParser("ok");
   printf("All tests passed.\n");
   return 0;
 }

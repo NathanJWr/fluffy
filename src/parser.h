@@ -11,4 +11,4 @@ typedef struct {
 
 void ParserInit(parser *Parser, lexer *Lexer);
 ast_program *ParseProgram(parser *Parser);
-void ProgramDelete(ast_program *Program);
+void ProgramDelete(ast_program *Program); // TODO: this function was never implemented
