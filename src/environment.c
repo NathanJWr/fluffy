@@ -194,6 +194,11 @@ void markAnySubObjects(object_bucket *Bucket) {
       EnvironmentMark(Func->Env);
     }
   } break;
+
+  case OBJECT_STRING: {
+    object_string *Str = (object_string *)Obj;
+    GCMarkAllocation(Str->Value);
+  } break;
   }
 }
 

@@ -35,6 +35,7 @@ typedef ast_base *(*PrefixParseFunction)(parser *);
 PrefixParseFunction findPrefixParseFunction(token_type Token);
 ast_base *parsePrefixExpression(parser *Parser);
 ast_base *parseIdentifier(parser *Parser);
+ast_base *parseString(parser *Parser);
 ast_base *parseIntegerLiteral(parser *Parser);
 ast_base *parseBoolean(parser *Parser);
 ast_base *parseGroupedExpression(parser *Parser);
@@ -215,6 +216,8 @@ PrefixParseFunction findPrefixParseFunction(token_type Token) {
     return parseIfExpression;
   case TOKEN_FUNCTION:
     return parseFunctionLiteral;
+  case TOKEN_STRING:
+    return parseString;
   default:
     printf("no prefix parse function for (%s) found\n", TokenType[Token]);
     return NULL;
@@ -329,6 +332,14 @@ ast_base *parseIdentifier(parser *Parser) {
   memcpy(Node, &Ident, sizeof(ast_identifier));
 
   return Node;
+}
+
+/* parses a string (e.g. "abc", "123", "boolean") */
+ast_base *parseString(parser *Parser) {
+  ast_string *Str =
+      (ast_string *)astBaseNodeCreate(Parser, sizeof(ast_string), AST_STRING);
+  Str->Value = Parser->CurString;
+  return (ast_base *)Str;
 }
 
 /* parses an integer (e.g. 123, 432, etc.) */
