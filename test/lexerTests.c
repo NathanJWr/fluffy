@@ -1,6 +1,6 @@
 int isDebug = 0;
 
-void printLog(char *);
+void printLog(char *, int);
 
 /**
  * If we expect an identifier, then also assert the Lexer's output is equal to
@@ -24,27 +24,28 @@ void testLexer(const char *str, ...) {
 
   debugLine = calloc(1, 0x1000);
   sprintf(debugLine, "%s", str);
-  printLog(debugLine);
-  printLog("================================");
+  printLog(debugLine, 1);
+  printLog("================================", 0);
   while (1) {
     expectedType = va_arg(expectedTypes, token_type);
     type = NextToken(&Lexer);
-    sprintf(debugLine, "  [%d]: %s ? %s", i + 1, TokenType[expectedType],
+    sprintf(debugLine, "  [%2d] : %s ? %s", i + 1, TokenType[expectedType],
             TokenType[type]);
-    printLog(debugLine);
+    printLog(debugLine, 1);
     assert(type == expectedType);
     switch (expectedType) {
-    case TOKEN_IDENT: {
+    case TOKEN_IDENT:
+    case TOKEN_STRING: {
       expectedString = va_arg(expectedTypes, char *);
       sprintf(debugLine, "   | %s ? %s", expectedString, Lexer.String);
-      printLog(debugLine);
+      printLog(debugLine, 1);
       assert(0 == strcmp(Lexer.String, expectedString));
       break;
     }
     case TOKEN_INT: {
       expectedInt = va_arg(expectedTypes, long);
       sprintf(debugLine, "   | %ld ? %ld", expectedInt, Lexer.Integer);
-      printLog(debugLine);
+      printLog(debugLine, 1);
       assert(Lexer.Integer == expectedInt);
       break;
     }
@@ -62,7 +63,7 @@ void testLexer(const char *str, ...) {
       i++;
     }
   }
-  printLog("================================");
+  printLog("================================", 0);
   va_end(expectedTypes);
 
   /* only now should we free any buffers we've allocated */
@@ -70,9 +71,11 @@ void testLexer(const char *str, ...) {
   free(StringStore);
 }
 
-void printLog(char *line) {
+void printLog(char *line, int isSprintF) {
   if (isDebug) {
     printf("%s\n", line);
   }
-  line[0] = '\0'; /* reset the buffer so new message can be put in it */
+  if (isSprintF) {
+    line[0] = '\0'; /* reset the buffer so new message can be put in it */
+  }
 }
