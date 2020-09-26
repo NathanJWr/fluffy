@@ -107,15 +107,15 @@ void AddToEnv(environment *Env, const char *Var, object *Obj) {
   /* Check if the index is empty. If it is we can put our Obj right there */
   if (isBucketEmpty(Env->Objects, Index)) {
     Env->Objects[Index] = Item;
+    Env->ObjectsExist++;
   } else if (0 == strcmp(Env->Objects[Index].Var, Var)) {
     /* The index is not empty, but it's the same string */
-    free(Env->Objects[Index].Var);
     Env->Objects[Index] = Item;
   } else {
     printf("Collision detected! \n");
     findSpotForKey(Env->Objects, Item, Index, Env->ObjectsLength);
+    Env->ObjectsExist++;
   }
-  Env->ObjectsExist++;
 }
 
 object *FindInEnv(environment *Env, const char *Var) {
@@ -194,10 +194,6 @@ void markAnySubObjects(object_bucket *Bucket) {
     }
   } break;
 
-  case OBJECT_STRING: {
-    object_string *Str = (object_string *)Obj;
-    GCMarkAllocation(Str->Value);
-  } break;
   }
 }
 

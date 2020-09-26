@@ -47,7 +47,7 @@ typedef struct {
 typedef struct {
   object Base;
 
-  char *Value;
+  char Value[];
 } object_string;
 
 typedef struct {

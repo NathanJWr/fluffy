@@ -56,9 +56,10 @@ object *Eval(ast_base *Node, environment *Env) {
   } break;
 
   case AST_STRING: {
-    object_string *Str =
-        (object_string *)NewObject(OBJECT_STRING, sizeof(object_string));
-    Str->Value = DuplicateStringWithGC(((ast_string *)Node)->Value);
+    char *AstStr = ((ast_string *)Node)->Value;
+    object_string *Str = (object_string *)NewObject(
+        OBJECT_STRING, sizeof(object_string) + strlen(AstStr) + 1);
+    strcpy(Str->Value, AstStr);
     return (object *)Str;
   } break;
 
@@ -350,14 +351,12 @@ object *evalStringInfixExpression(token_type Op, object_string *Left,
   switch (Op) {
 
   case TOKEN_PLUS: {
-    unsigned int Size = strlen(Left->Value) + strlen(Right->Value) + 1;
-    char *Str = GCMalloc(Size);
-    strcat(Str, Left->Value);
-    strcat(Str, Right->Value);
+    unsigned int NewStrLen = strlen(Left->Value) + strlen(Right->Value) + 1;
 
     object_string *StrObj =
-        (object_string *)NewObject(OBJECT_STRING, sizeof(object_string));
-    StrObj->Value = Str;
+        (object_string *)NewObject(OBJECT_STRING, sizeof(object_string) + NewStrLen);
+    strcat(StrObj->Value, Left->Value);
+    strcat(StrObj->Value, Right->Value);
     return (object *)StrObj;
   } break;
 
