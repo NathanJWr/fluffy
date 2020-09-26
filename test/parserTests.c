@@ -31,7 +31,7 @@ void readBlock(ast_base *base, va_list expectedTypes, int tabs) {
   char *debugLine = calloc(1, 0x1000);
   char *expectedString;
   long expectedInt;
-  double expectedDbl;
+  double expectedDbl, delta, epsilon = __DBL_EPSILON__;
   bool expectedBool;
   token_type expectedToken;
   ast_type expectedType;
@@ -48,30 +48,41 @@ void readBlock(ast_base *base, va_list expectedTypes, int tabs) {
     for (i = 0; i < len; i++) {
       readBlock(base_program->Statements[i], expectedTypes, tabs + 1);
     }
-    break;
-  }
+  } break;
   case AST_IDENTIFIER: {
     ast_identifier *identifier = (ast_identifier *)base;
     expectedString = va_arg(expectedTypes, char *);
     sprintf(debugLine, "   | %s ? %s", expectedString, identifier->Value);
     printLog(debugLine, 1);
     assert(0 == strcmp(expectedString, identifier->Value));
-    break;
-  }
-  case AST_INTEGER_LITERAL: {
-    ast_integer_literal *integer_literal = (ast_integer_literal *)base;
-    expectedInt = va_arg(expectedTypes, long);
-    sprintf(debugLine, "   | %ld ? %ld", expectedInt, integer_literal->Integer);
+  } break;
+  case AST_STRING: {
+    ast_string *stringy = (ast_string *)base;
+    expectedString = va_arg(expectedTypes, char *);
+    sprintf(debugLine, "   | %s ? %s", expectedString, stringy->Value);
     printLog(debugLine, 1);
-    assert(expectedInt == integer_literal->Integer);
-    break;
-  }
-  case AST_DOUBLE_LITERAL: {
-    ast_double_literal *double_literal = (ast_double_literal *)base;
-    expectedInt = va_arg(expectedTypes, double);
-    sprintf(debugLine, "   | %lf ? %lf", expectedInt, double_literal->Double);
-    printLog(debugLine, 1);
-    assert(expectedDbl == double_literal->Double);
+    assert(0 == strcmp(expectedString, stringy->Value));
+  } break;
+  case AST_NUMBER: {
+    ast_number *number = (ast_number *)base;
+    switch (number->Type) {
+    case num_integer: {
+      expectedInt = va_arg(expectedTypes, long);
+      sprintf(debugLine, "   | %ld ? %ld", expectedInt, number->Int);
+      printLog(debugLine, 1);
+      assert(expectedInt == number->Int);
+    } break;
+    case num_double: {
+      expectedDbl = va_arg(expectedTypes, double);
+      delta = abs(expectedDbl - number->Dbl);
+      sprintf(debugLine, "   | %lf ? %lf", expectedDbl, number->Dbl);
+      printLog(debugLine, 1);
+      assert(delta <= epsilon);
+    } break;
+    default: {
+      assert(0);
+    } break;
+    }
     break;
   }
   case AST_BOOLEAN: {
@@ -80,8 +91,7 @@ void readBlock(ast_base *base, va_list expectedTypes, int tabs) {
     sprintf(debugLine, "   | %d ? %d", expectedBool, boolean->Value);
     printLog(debugLine, 1);
     assert(expectedBool == boolean->Value);
-    break;
-  }
+  } break;
   case AST_PREFIX_EXPRESSION: {
     ast_prefix_expression *prefix = (ast_prefix_expression *)base;
     expectedToken = va_arg(expectedTypes, token_type);
@@ -89,10 +99,30 @@ void readBlock(ast_base *base, va_list expectedTypes, int tabs) {
             TokenType[prefix->Operation]);
     printLog(debugLine, 1);
     assert(expectedToken == prefix->Operation);
-    break;
-  }
-  default:
-    break;
+    readBlock(prefix->Right, expectedTypes, tabs + 1);
+  } break;
+  case AST_INFIX_EXPRESSION: {
+    ast_infix_expression *infix = (ast_infix_expression *)base;
+    expectedToken = va_arg(expectedTypes, token_type);
+    sprintf(debugLine, "   | %s ? %s", TokenType[expectedToken],
+            TokenType[infix->Operation]);
+    printLog(debugLine, 1);
+    assert(expectedToken == infix->Operation);
+    readBlock(infix->Left, expectedTypes, tabs + 1);
+    readBlock(infix->Right, expectedTypes, tabs + 1);
+  } break;
+  case AST_VAR_STATEMENT: {
+    ast_var_statement *var = (ast_var_statement *)base;
+    readBlock((ast_base *)var->Name, expectedTypes, tabs + 1);
+    readBlock(var->Value, expectedTypes, tabs + 1);
+  } break;
+  case AST_RETURN_STATEMENT: {
+    ast_return_statement *ret = (ast_return_statement *)base;
+    readBlock(ret->Expr, expectedTypes, tabs + 1);
+  } break;
+  default: {
+    assert(0);
+  } break;
   }
   free(debugLine);
 }
