@@ -1,11 +1,18 @@
-size_t hashString(const char *Str) {
+hashed_string hashString(const char *Str) {
+  hashed_string Return = {0};
   size_t Hash = 5381;
   int c;
 
+  Return.Str = Str;
   while ((c = *Str++))
     Hash = ((Hash << 5) + Hash) + c; /* hash * 33 + c */
 
-  return Hash;
+  Return.Hash = Hash;
+  return Return;
+}
+
+static inline bool HashEqual(hashed_string A, hashed_string B) {
+  return (A.Hash == B.Hash && (0 == strcmp(A.Str, B.Str)));
 }
 
 size_t fastModulus(size_t Hash, size_t BucketLength) {
@@ -51,10 +58,10 @@ void rehashEnv(environment *OldEnv, environment *NewEnv) {
   unsigned int i;
   for (i = 0; i < OldEnv->ObjectsLength; i++) {
     if (OldEnv->Objects[i].ProbeSequenceLength != -1) {
-      char *Var = OldEnv->Objects[i].Var;
+      hashed_string Var = OldEnv->Objects[i].Var;
       object *Obj = OldEnv->Objects[i].Obj;
 
-      AddToEnv(NewEnv, Var, Obj);
+      AddToEnv(NewEnv, Var.Str, Obj);
     }
   }
 }
@@ -79,7 +86,6 @@ void possiblRehashAndResize(environment *Env) {
 
 void InitEnv(environment *Env, unsigned int Size) {
   /* Note: Using power of two array sizes for faster modulus */
-  unsigned int i;
   unsigned int AllocSize = sizeof(object_bucket) * Size;
   Env->ObjectsLength = Size;
   Env->ObjectsExist = 0;
@@ -91,7 +97,7 @@ void InitEnv(environment *Env, unsigned int Size) {
 }
 
 void AddToEnv(environment *Env, const char *Var, object *Obj) {
-  size_t Hash;
+  hashed_string HashedStr;
   unsigned int Index;
   object_bucket Item;
 
@@ -99,29 +105,29 @@ void AddToEnv(environment *Env, const char *Var, object *Obj) {
 
   /* Hash the string to get the index we're going to try to put
    * our Object in */
-  Hash = hashString(Var);
-  Index = fastModulus(Hash, Env->ObjectsLength);
+  HashedStr = hashString(Var);
+  Index = fastModulus(HashedStr.Hash, Env->ObjectsLength);
 
   Item =
-      (object_bucket){.ProbeSequenceLength = 1, .Var = (char *)Var, .Obj = Obj};
+      (object_bucket){.ProbeSequenceLength = 1, .Var = HashedStr, .Obj = Obj};
 
   /* Check if the index is empty. If it is we can put our Obj right there */
   if (isBucketEmpty(Env->Objects, Index)) {
     Env->Objects[Index] = Item;
-  } else if (0 == strcmp(Env->Objects[Index].Var, Var)) {
+    Env->ObjectsExist++;
+  } else if (HashEqual(HashedStr, Env->Objects[Index].Var)) {
     /* The index is not empty, but it's the same string */
-    free(Env->Objects[Index].Var);
     Env->Objects[Index] = Item;
   } else {
     printf("Collision detected! \n");
     findSpotForKey(Env->Objects, Item, Index, Env->ObjectsLength);
+    Env->ObjectsExist++;
   }
-  Env->ObjectsExist++;
 }
 
 object *FindInEnv(environment *Env, const char *Var) {
-  size_t Hash = hashString(Var);
-  unsigned int Index = fastModulus(Hash, Env->ObjectsLength);
+  hashed_string HashedStr = hashString(Var);
+  unsigned int Index = fastModulus(HashedStr.Hash, Env->ObjectsLength);
   unsigned int IndexesTried = 0;
 
   /* Ideally the first Index we try is where our Var is located.
@@ -133,7 +139,7 @@ object *FindInEnv(environment *Env, const char *Var) {
          !isBucketEmpty(Env->Objects, Index)) {
 
     if (!isBucketEmpty(Env->Objects, Index) &&
-        (0 == strcmp(Env->Objects[Index].Var, Var))) {
+        (HashEqual(Env->Objects[Index].Var, HashedStr))) {
       return Env->Objects[Index].Obj;
     }
     IndexesTried++;
@@ -195,9 +201,13 @@ void markAnySubObjects(object_bucket *Bucket) {
     }
   } break;
 
-  case OBJECT_STRING: {
-    object_string *Str = (object_string *)Obj;
-    GCMarkAllocation(Str->Value);
+  case OBJECT_ARRAY: {
+    object_array *Arr = (object_array *)Obj;
+    unsigned int i;
+    unsigned int ArrLength = ArraySize(Arr->Items);
+    for (i = 0; i < ArrLength; i++) {
+      GCMarkAllocation(Arr->Items[i]);
+    }
   } break;
   }
 }

@@ -86,6 +86,12 @@ token_type NextToken(lexer *Lexer) {
   case '.': {
     Token = TOKEN_DOT;
   } break;
+  case '[': {
+    Token = TOKEN_LSQUARE;
+  } break;
+  case ']': {
+    Token = TOKEN_RSQUARE;
+  } break;
   case '\0': {
     Token = TOKEN_END;
   } break;
@@ -204,11 +210,6 @@ token_type readNumber(lexer *Lexer) {
   Lexer->ParseLocation--;
   *NumEnd++ = '\0';
 
-  if (End == Num) {
-    fprintf(stderr, "no digits were found\n");
-    exit(EXIT_FAILURE);
-  }
-
   switch (dotAmt) {
   case 0: { /* int */
     /* convert number string into an integer */
@@ -242,5 +243,9 @@ token_type readNumber(lexer *Lexer) {
     exit(EXIT_FAILURE);
     break;
   }
+  }
+  if (End == Num) {
+    fprintf(stderr, "no digits were found\n");
+    exit(EXIT_FAILURE);
   }
 }

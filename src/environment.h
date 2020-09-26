@@ -1,6 +1,11 @@
 typedef struct {
+  const char *Str;
+  size_t Hash;
+} hashed_string;
+
+typedef struct {
   char ProbeSequenceLength;
-  char *Var;
+  hashed_string Var;
   object *Obj;
 } object_bucket;
 

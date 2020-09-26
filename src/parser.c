@@ -36,6 +36,7 @@ PrefixParseFunction findPrefixParseFunction(token_type Token);
 ast_base *parsePrefixExpression(parser *Parser);
 ast_base *parseIdentifier(parser *Parser);
 ast_base *parseString(parser *Parser);
+ast_base *parseArray(parser *Parser);
 ast_base *parseIntegerLiteral(parser *Parser);
 ast_base *parseDoubleLiteral(parser *Parser);
 ast_base *parseBoolean(parser *Parser);
@@ -53,6 +54,7 @@ ast_base *parseFunctionCallExppression(parser *Parser, ast_base *left);
 ast_base *parseBlockStatement(parser *Parser);
 ast_base **parseFunctionCallArguments(parser *Parser);
 ast_base **parseFunctionArguments(parser *Parser);
+ast_base **parseArrayItems(parser *Parser);
 void debugPrintAstNode(ast_base *Node);
 
 void ParserInit(parser *Parser, lexer *Lexer) {
@@ -222,6 +224,8 @@ PrefixParseFunction findPrefixParseFunction(token_type Token) {
     return parseFunctionLiteral;
   case TOKEN_STRING:
     return parseString;
+  case TOKEN_LSQUARE:
+    return parseArray;
   default:
     printf("no prefix parse function for (%s) found\n", TokenType[Token]);
     return NULL;
@@ -344,6 +348,46 @@ ast_base *parseString(parser *Parser) {
       (ast_string *)astBaseNodeCreate(Parser, sizeof(ast_string), AST_STRING);
   Str->Value = Parser->CurString;
   return (ast_base *)Str;
+}
+
+ast_base **parseArrayItems(parser *Parser) {
+  ast_base **Items = NULL;
+  ast_base *Item = NULL;
+
+  if (Parser->PeekToken == TOKEN_RSQUARE) {
+    nextToken(Parser);
+    return Items;
+  }
+
+  /* create the first item */
+  nextToken(Parser);
+  Item = parseExpression(Parser, PRECEDENCE_LOWEST);
+  ArrayPush(Items, Item);
+
+  /* keep parsing identifiers until we don't see commas */
+  while (Parser->PeekToken == TOKEN_COMMA) {
+    nextToken(Parser);
+    nextToken(Parser);
+
+    Item = parseExpression(Parser, PRECEDENCE_LOWEST);
+    ArrayPush(Items, Item);
+  }
+
+  if (Parser->PeekToken != TOKEN_RSQUARE) {
+    return NULL;
+  }
+  nextToken(Parser);
+
+  return Items;
+}
+
+/* parses an array (e.g. [1, 2, 3]) */
+ast_base *parseArray(parser *Parser) {
+  ast_array_literal *Arr = (ast_array_literal *)astBaseNodeCreate(
+      Parser, sizeof(ast_array_literal), AST_ARRAY_LITERAL);
+
+  Arr->Items = parseArrayItems(Parser);
+  return (ast_base *)Arr;
 }
 
 /* parses an integer (e.g. 123, 432, etc.) */

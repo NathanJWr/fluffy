@@ -30,6 +30,8 @@
   X(RPAREN)                                                                    \
   X(LBRACE)                                                                    \
   X(RBRACE)                                                                    \
+  X(LSQUARE)                                                                   \
+  X(RSQUARE)                                                                   \
                                                                                \
   /* Keywords */                                                               \
   X(FUNCTION)                                                                  \

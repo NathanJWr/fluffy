@@ -58,10 +58,19 @@ object *Eval(ast_base *Node, environment *Env) {
   } break;
 
   case AST_STRING: {
-    object_string *Str =
-        (object_string *)NewObject(OBJECT_STRING, sizeof(object_string));
-    Str->Value = DuplicateStringWithGC(((ast_string *)Node)->Value);
+    char *AstStr = ((ast_string *)Node)->Value;
+    object_string *Str = (object_string *)NewObject(
+        OBJECT_STRING, sizeof(object_string) + strlen(AstStr) + 1);
+    strcpy(Str->Value, AstStr);
     return (object *)Str;
+  } break;
+
+  case AST_ARRAY_LITERAL: {
+    ast_array_literal *Arr = (ast_array_literal *)Node;
+    object_array *ArrObject =
+        (object_array *)NewObject(OBJECT_ARRAY, sizeof(object_array));
+    ArrObject->Items = evalExpressions(Arr->Items, Env);
+    return (object *)ArrObject;
   } break;
 
   case AST_PREFIX_EXPRESSION: {
