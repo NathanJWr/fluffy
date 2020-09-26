@@ -11,6 +11,8 @@ object *evalMinusPrefixOperatorExpression(object *Obj);
 object *evalInfixExpression(token_type Op, object *Left, object *Right);
 object *evalIntegerInfixExpression(token_type Op, object_integer *Left,
                                    object_integer *Right);
+object *evalStringInfixExpression(token_type Op, object_string *Left,
+                                  object_string *Right);
 object *evalBooleanInfixExpression(token_type Op, object_boolean *Left,
                                    object_boolean *Right);
 bool isTruthy(object *Obj);
@@ -18,6 +20,7 @@ object *applyFunction(object *Fn, object **Args);
 environment *extendFnEnv(object_function *Fn, object **Args,
                          unsigned int ArgsLength);
 object *unwrapReturnValue(object *Obj);
+char *DuplicateStringWithGC(char *Str);
 
 void EvalInit(void) {
   NullObject.Base.Type = OBJECT_NULL;
@@ -50,6 +53,13 @@ object *Eval(ast_base *Node, environment *Env) {
         (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
     Bool->Value = ((ast_boolean *)Node)->Value;
     return (object *)Bool;
+  } break;
+
+  case AST_STRING: {
+    object_string *Str =
+        (object_string *)NewObject(OBJECT_STRING, sizeof(object_string));
+    Str->Value = DuplicateStringWithGC(((ast_string *)Node)->Value);
+    return (object *)Str;
   } break;
 
   case AST_PREFIX_EXPRESSION: {
@@ -320,6 +330,11 @@ object *evalInfixExpression(token_type Op, object *Left, object *Right) {
                                         (object_boolean *)Right);
     } break;
 
+    case OBJECT_STRING: {
+      return evalStringInfixExpression(Op, (object_string *)Left,
+                                       (object_string *)Right);
+    }
+
     default: {
       return NewError("unsupported type %s in infix expression", TokenType[Op]);
     }
@@ -327,6 +342,43 @@ object *evalInfixExpression(token_type Op, object *Left, object *Right) {
   } else {
     return NewError("type mismatch: %s, %s", ObjectType[Left->Type],
                     ObjectType[Right->Type]);
+  }
+}
+
+object *evalStringInfixExpression(token_type Op, object_string *Left,
+                                  object_string *Right) {
+  switch (Op) {
+
+  case TOKEN_PLUS: {
+    unsigned int Size = strlen(Left->Value) + strlen(Right->Value) + 1;
+    char *Str = GCMalloc(Size);
+    strcat(Str, Left->Value);
+    strcat(Str, Right->Value);
+
+    object_string *StrObj =
+        (object_string *)NewObject(OBJECT_STRING, sizeof(object_string));
+    StrObj->Value = Str;
+    return (object *)StrObj;
+  } break;
+
+  case TOKEN_EQ: {
+    object_boolean *Eq =
+        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
+    Eq->Value = (0 == strcmp(Left->Value, Right->Value));
+    return (object *)Eq;
+  } break;
+
+  case TOKEN_NOT_EQ: {
+    object_boolean *Eq =
+        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
+    Eq->Value = !(0 == strcmp(Left->Value, Right->Value));
+    return (object *)Eq;
+  } break;
+
+  default: {
+    return NewError("unknown operator: %s %s %s", ObjectType[Left->Base.Type],
+                    TokenType[Op], ObjectType[Right->Base.Type]);
+  } break;
   }
 }
 
@@ -435,4 +487,10 @@ bool isTruthy(object *Obj) {
     return true;
   } break;
   }
+}
+
+char *DuplicateStringWithGC(char *Str) {
+  char *Dup = GCMalloc(strlen(Str) + 1);
+  strcpy(Dup, Str);
+  return Dup;
 }
