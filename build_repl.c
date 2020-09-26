@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <stdarg.h>
+#include <assert.h>
 
 /* debug includes */
 #include "src/leak_checker.h"
@@ -18,6 +19,7 @@
 /* project includes */
 #include "src/defines.h"
 #include "src/stretchy_array.h"
+#include "src/number.h"
 #include "src/token.h"
 #include "src/ast.h"
 #include "src/object.h"

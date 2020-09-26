@@ -2,8 +2,7 @@
   X(AST_BASE)                                                                  \
   X(AST_PROGRAM)                                                               \
   X(AST_IDENTIFIER)                                                            \
-  X(AST_INTEGER_LITERAL)                                                       \
-  X(AST_DOUBLE_LITERAL)                                                        \
+  X(AST_NUMBER)                                                                \
   X(AST_PREFIX_EXPRESSION)                                                     \
   X(AST_BOOLEAN)                                                               \
   X(AST_IF_EXPRESSION)                                                         \
@@ -49,14 +48,12 @@ typedef struct {
 typedef struct {
   ast_base Base;
 
-  long Integer;
-} ast_integer_literal;
-
-typedef struct {
-  ast_base Base;
-
-  double Double;
-} ast_double_literal;
+  num_type Type;
+  union {
+    long Int;
+    double Dbl;
+  };
+} ast_number;
 
 typedef struct {
   ast_base Base;
