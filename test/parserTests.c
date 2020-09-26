@@ -31,6 +31,7 @@ void readBlock(ast_base *base, va_list expectedTypes, int tabs) {
   char *debugLine = calloc(1, 0x1000);
   char *expectedString;
   long expectedInt;
+  double expectedDbl;
   bool expectedBool;
   token_type expectedToken;
   ast_type expectedType;
@@ -63,6 +64,14 @@ void readBlock(ast_base *base, va_list expectedTypes, int tabs) {
     sprintf(debugLine, "   | %ld ? %ld", expectedInt, integer_literal->Integer);
     printLog(debugLine, 1);
     assert(expectedInt == integer_literal->Integer);
+    break;
+  }
+  case AST_DOUBLE_LITERAL: {
+    ast_double_literal *double_literal = (ast_double_literal *)base;
+    expectedInt = va_arg(expectedTypes, double);
+    sprintf(debugLine, "   | %lf ? %lf", expectedInt, double_literal->Double);
+    printLog(debugLine, 1);
+    assert(expectedDbl == double_literal->Double);
     break;
   }
   case AST_BOOLEAN: {

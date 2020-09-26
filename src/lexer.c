@@ -84,7 +84,6 @@ token_type NextToken(lexer *Lexer) {
     Token = TOKEN_STRING;
   } break;
   case '.': {
-    readString(Lexer);
     Token = TOKEN_DOT;
   } break;
   case '\0': {

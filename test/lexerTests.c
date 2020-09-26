@@ -11,6 +11,7 @@ void testLexer(const char *str, ...) {
   int i = 0;
   char *expectedString;
   long expectedInt;
+  double expectedDbl;
   char *debugLine = calloc(
       1, 0x1000); /* only malloc once, continously overwrite, free at end */
   int atEnd = 0;
@@ -43,6 +44,13 @@ void testLexer(const char *str, ...) {
       sprintf(debugLine, "   | %ld ? %ld", expectedInt, Lexer.Integer);
       printLog(debugLine, 1);
       assert(Lexer.Integer == expectedInt);
+      break;
+    }
+    case TOKEN_DOUBLE: {
+      expectedDbl = va_arg(expectedTypes, double);
+      sprintf(debugLine, "   | %lf ? %lf", expectedDbl, Lexer.Double);
+      printLog(debugLine, 1);
+      assert(Lexer.Double == expectedDbl);
       break;
     }
     case TOKEN_END: {
