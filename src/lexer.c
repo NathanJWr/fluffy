@@ -1,7 +1,7 @@
 void skipWhitespace(lexer *l);
 void readChar(lexer *l);
 token_type readIdentifier(lexer *Lexer);
-void readInteger(lexer *Lexer);
+token_type readNumber(lexer *Lexer);
 char peekChar(lexer *l);
 token_type lookupTokenType(char *ident);
 void readString(lexer *Lexer);
@@ -22,8 +22,7 @@ token_type NextToken(lexer *Lexer) {
     if (isalpha(c)) {
       Token = readIdentifier(Lexer);
     } else if (isdigit(c)) {
-      readInteger(Lexer);
-      Token = TOKEN_INT;
+      Token = readNumber(Lexer);
     } else {
       Token = TOKEN_ILLEGAL;
     }
@@ -83,6 +82,9 @@ token_type NextToken(lexer *Lexer) {
   case '"': {
     readString(Lexer);
     Token = TOKEN_STRING;
+  } break;
+  case '.': {
+    Token = TOKEN_DOT;
   } break;
   case '\0': {
     Token = TOKEN_END;
@@ -186,32 +188,59 @@ token_type lookupTokenType(char *ident) {
   }
 }
 
-void readInteger(lexer *Lexer) {
+token_type readNumber(lexer *Lexer) {
   /* construct an integer in the string storage memory */
-  char *Int = Lexer->StringStorage;
-  char *IntEnd = Lexer->StringStorage;
+  char *Num = Lexer->StringStorage;
+  char *NumEnd = Lexer->StringStorage;
   char *End;
-  while (isdigit(*Lexer->ParseLocation) &&
+  int dotAmt = 0;
+  while ((isdigit(*Lexer->ParseLocation) || *Lexer->ParseLocation == '.') &&
          Lexer->ParseLocation != Lexer->EndLocation) {
-    *IntEnd++ = *Lexer->ParseLocation++;
+    if (*Lexer->ParseLocation == '.') {
+      dotAmt++;
+    }
+    *NumEnd++ = *Lexer->ParseLocation++;
   }
   Lexer->ParseLocation--;
-  *IntEnd++ = '\0';
+  *NumEnd++ = '\0';
 
-  /* convert integer string into an integer */
-  errno = 0;
-  Lexer->Integer = strtol(Int, &End, 10);
-
-  /* Check for various possible errors */
-  if ((errno == ERANGE &&
-       (Lexer->Integer == LONG_MAX || Lexer->Integer == LONG_MIN)) ||
-      (errno != 0 && Lexer->Integer == 0)) {
-    perror("failed integer conversion");
+  if (End == Num) {
+    fprintf(stderr, "no digits were found\n");
     exit(EXIT_FAILURE);
   }
 
-  if (End == Int) {
-    fprintf(stderr, "no digits were found\n");
+  switch (dotAmt) {
+  case 0: { /* int */
+    /* convert number string into an integer */
+    errno = 0;
+    Lexer->Integer = strtol(Num, &End, 10);
+
+    /* Check for various possible errors */
+    if ((errno == ERANGE &&
+         (Lexer->Integer == LONG_MAX || Lexer->Integer == LONG_MIN)) ||
+        (errno != 0 && Lexer->Integer == 0)) {
+      perror("failed integer conversion");
+      exit(EXIT_FAILURE);
+    }
+    return TOKEN_INT;
+  }
+  case 1: { /* double */
+    /* convert number string into a double */
+    errno = 0;
+    Lexer->Double = strtod(Num, &End);
+
+    /* Check for various possible errors */
+    if (errno == ERANGE || (errno != 0 && Lexer->Double == 0)) {
+      perror("failed double conversion");
+      exit(EXIT_FAILURE);
+    }
+    return TOKEN_DOUBLE;
+  }
+  default: {
+    /* error */
+    perror("incorrect number format");
     exit(EXIT_FAILURE);
+    break;
+  }
   }
 }

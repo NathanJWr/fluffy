@@ -5,6 +5,7 @@
   /* Identifiers + Literals */                                                 \
   X(IDENT)                                                                     \
   X(INT)                                                                       \
+  X(DOUBLE)                                                                    \
   X(STRING)                                                                    \
                                                                                \
   /* Operators */                                                              \
@@ -21,6 +22,7 @@
   X(GT)                                                                        \
                                                                                \
   /* Delimiters */                                                             \
+  X(DOT)                                                                       \
   X(COMMA)                                                                     \
   X(SEMICOLON)                                                                 \
                                                                                \

@@ -30,6 +30,10 @@ void PrintObject(object *Obj) {
     printf("%ld", ((object_integer *)Obj)->Value);
   } break;
 
+  case OBJECT_DOUBLE: {
+    printf("%lf", ((object_double *)Obj)->Value);
+  } break;
+
   case OBJECT_BOOLEAN: {
     (((object_boolean *)Obj)->Value) ? printf("true") : printf("false");
   } break;

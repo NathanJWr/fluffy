@@ -38,6 +38,13 @@ object *Eval(ast_base *Node, environment *Env) {
     return (object *)Int;
   } break;
 
+  case AST_DOUBLE_LITERAL: {
+    object_double *Dbl =
+        (object_double *)NewObject(OBJECT_DOUBLE, sizeof(object_double));
+    Dbl->Value = ((ast_double_literal *)Node)->Double;
+    return (object *)Dbl;
+  } break;
+
   case AST_BOOLEAN: {
     object_boolean *Bool =
         (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
@@ -141,6 +148,7 @@ object *Eval(ast_base *Node, environment *Env) {
   } break;
 
   default:
+    /* TODO: @Nathan want to throw an error here? */
     return (object *)&NullObject;
   }
 }

@@ -3,6 +3,7 @@
   X(AST_PROGRAM)                                                               \
   X(AST_IDENTIFIER)                                                            \
   X(AST_INTEGER_LITERAL)                                                       \
+  X(AST_DOUBLE_LITERAL)                                                        \
   X(AST_PREFIX_EXPRESSION)                                                     \
   X(AST_BOOLEAN)                                                               \
   X(AST_IF_EXPRESSION)                                                         \
@@ -48,6 +49,12 @@ typedef struct {
 
   long Integer;
 } ast_integer_literal;
+
+typedef struct {
+  ast_base Base;
+
+  double Double;
+} ast_double_literal;
 
 typedef struct {
   ast_base Base;

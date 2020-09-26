@@ -9,8 +9,10 @@ int main(int argc, char **argv) {
   testLexer("<hello >", TOKEN_LT, TOKEN_IDENT, "hello", TOKEN_GT, TOKEN_END);
   testLexer("< hello>", TOKEN_LT, TOKEN_IDENT, "hello", TOKEN_GT, TOKEN_END);
   testLexer(" <hello>", TOKEN_LT, TOKEN_IDENT, "hello", TOKEN_GT, TOKEN_END);
-  testLexer("{1.99}", TOKEN_LBRACE, TOKEN_INT, 1, TOKEN_ILLEGAL, TOKEN_INT, 99,
+  testLexer("{1$99}", TOKEN_LBRACE, TOKEN_INT, 1, TOKEN_ILLEGAL, TOKEN_INT, 99,
             TOKEN_RBRACE, TOKEN_END);
+  testLexer("{1.99}", TOKEN_LBRACE, TOKEN_DOUBLE, 1.99, TOKEN_RBRACE,
+            TOKEN_END);
   testLexer("fn hello(n = 10) { return n; }", TOKEN_FUNCTION, TOKEN_IDENT,
             "hello", TOKEN_LPAREN, TOKEN_IDENT, "n", TOKEN_ASSIGN, TOKEN_INT,
             10, TOKEN_RPAREN, TOKEN_LBRACE, TOKEN_RETURN, TOKEN_IDENT, "n",
@@ -26,11 +28,13 @@ int main(int argc, char **argv) {
             "string", TOKEN_END);
   testLexer("testLexer(const char *str, ...)", TOKEN_IDENT, "testLexer",
             TOKEN_LPAREN, TOKEN_IDENT, "const", TOKEN_IDENT, "char",
-            TOKEN_ASTERISK, TOKEN_IDENT, "str", TOKEN_COMMA, TOKEN_ILLEGAL,
-            TOKEN_ILLEGAL, TOKEN_ILLEGAL, TOKEN_RPAREN, TOKEN_END);
+            TOKEN_ASTERISK, TOKEN_IDENT, "str", TOKEN_COMMA, TOKEN_DOT,
+            TOKEN_DOT, TOKEN_DOT, TOKEN_RPAREN, TOKEN_END);
   /* PARSER TESTING */
-  testParser("number is 43", AST_PROGRAM, AST_IDENTIFIER, "number", AST_IDENTIFIER, "is", AST_INTEGER_LITERAL, 43);
-  testParser("-20", AST_PROGRAM, AST_PREFIX_EXPRESSION, TOKEN_MINUS, AST_INTEGER_LITERAL, 20);
+  testParser("number is 43", AST_PROGRAM, AST_IDENTIFIER, "number",
+             AST_IDENTIFIER, "is", AST_INTEGER_LITERAL, 43);
+  testParser("-20", AST_PROGRAM, AST_PREFIX_EXPRESSION, TOKEN_MINUS,
+             AST_INTEGER_LITERAL, 20);
   printf("All tests passed.\n");
   return 0;
 }

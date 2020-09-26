@@ -15,9 +15,9 @@ typedef struct {
   /* possible variables */
   char *String;
   long Integer;
+  double Double;
 } lexer;
 
-void LexerInit(lexer *Lexer, const char *Input,
-               const char *InputEndLocation, char *StringStore,
-               unsigned int StringStoreSize);
+void LexerInit(lexer *Lexer, const char *Input, const char *InputEndLocation,
+               char *StringStore, unsigned int StringStoreSize);
 token_type NextToken(lexer *l);
