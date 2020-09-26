@@ -14,6 +14,7 @@
   X(AST_VAR_STATEMENT)                                                         \
   X(AST_RETURN_STATEMENT)                                                      \
   X(AST_STRING)                                                                \
+  X(AST_ARRAY_LITERAL)                                                         \
   XX(AST_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -124,3 +125,9 @@ typedef struct {
 
   char *Value;
 } ast_string;
+
+typedef struct {
+  ast_base Base;
+
+  ast_base **Items; /* stretchy array */
+} ast_array_literal;

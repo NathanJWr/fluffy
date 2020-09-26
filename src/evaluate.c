@@ -63,6 +63,14 @@ object *Eval(ast_base *Node, environment *Env) {
     return (object *)Str;
   } break;
 
+  case AST_ARRAY_LITERAL: {
+    ast_array_literal *Arr = (ast_array_literal *)Node;
+    object_array *ArrObject =
+        (object_array *)NewObject(OBJECT_ARRAY, sizeof(object_array));
+    ArrObject->Items = evalExpressions(Arr->Items, Env);
+    return (object *)ArrObject;
+  } break;
+
   case AST_PREFIX_EXPRESSION: {
     ast_prefix_expression *Prefix = (ast_prefix_expression *)Node;
     object *Right = Eval(Prefix->Right, Env);
@@ -353,8 +361,8 @@ object *evalStringInfixExpression(token_type Op, object_string *Left,
   case TOKEN_PLUS: {
     unsigned int NewStrLen = strlen(Left->Value) + strlen(Right->Value) + 1;
 
-    object_string *StrObj =
-        (object_string *)NewObject(OBJECT_STRING, sizeof(object_string) + NewStrLen);
+    object_string *StrObj = (object_string *)NewObject(
+        OBJECT_STRING, sizeof(object_string) + NewStrLen);
     strcat(StrObj->Value, Left->Value);
     strcat(StrObj->Value, Right->Value);
     return (object *)StrObj;

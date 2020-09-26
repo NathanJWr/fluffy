@@ -3,6 +3,7 @@
   X(OBJECT_DOUBLE)                                                             \
   X(OBJECT_BOOLEAN)                                                            \
   X(OBJECT_STRING)                                                             \
+  X(OBJECT_ARRAY)                                                              \
   X(OBJECT_NULL)                                                               \
   X(OBJECT_RETURN)                                                             \
   X(OBJECT_ERROR)                                                              \
@@ -49,6 +50,12 @@ typedef struct {
 
   char Value[];
 } object_string;
+
+typedef struct {
+  object Base;
+
+  object **Items; /* stretchy array */
+} object_array;
 
 typedef struct {
   object Base;

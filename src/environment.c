@@ -200,6 +200,15 @@ void markAnySubObjects(object_bucket *Bucket) {
       EnvironmentMark(Func->Env);
     }
   } break;
+
+  case OBJECT_ARRAY: {
+    object_array *Arr = (object_array *)Obj;
+    unsigned int i;
+    unsigned int ArrLength = ArraySize(Arr->Items);
+    for (i = 0; i < ArrLength; i++) {
+      GCMarkAllocation(Arr->Items[i]);
+    }
+  } break;
   }
 }
 

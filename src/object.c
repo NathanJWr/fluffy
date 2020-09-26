@@ -42,6 +42,19 @@ void PrintObject(object *Obj) {
     printf("%s", ((object_string *)Obj)->Value);
   } break;
 
+  case OBJECT_ARRAY: {
+    unsigned int i;
+    object_array *Arr = (object_array *)Obj;
+    unsigned int ArrLength = ArraySize(Arr->Items);
+    printf("[");
+    for (i = 0; i < ArrLength - 1; i++) {
+      PrintObject(Arr->Items[i]);
+      printf(", ");
+    }
+    PrintObject(Arr->Items[i]);
+    printf("]");
+  } break;
+
   case OBJECT_NULL: {
     printf("NULL");
   } break;
@@ -70,6 +83,4 @@ void PrintObject(object *Obj) {
     printf("Error: unknown object");
   }
   }
-
-  printf("\n");
 }

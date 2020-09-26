@@ -86,6 +86,12 @@ token_type NextToken(lexer *Lexer) {
   case '.': {
     Token = TOKEN_DOT;
   } break;
+  case '[': {
+    Token = TOKEN_LSQUARE;
+  } break;
+  case ']': {
+    Token = TOKEN_RSQUARE;
+  } break;
   case '\0': {
     Token = TOKEN_END;
   } break;

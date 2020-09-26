@@ -57,6 +57,7 @@ int main() {
     StringStore = Lexer.StringStorage;
 
     GCMarkAndSweep(Env);
+    printf("\n");
   }
 
   for (i = 0; i < ArraySize(Programs); i++) {
