@@ -11,7 +11,8 @@ void testLexer(const char *str, ...) {
   int i = 0;
   char *expectedString;
   long expectedInt;
-  char *debugLine = calloc(1, 0x1000);
+  char *debugLine = calloc(
+      1, 0x1000); /* only malloc once, continously overwrite, free at end */
   int atEnd = 0;
   va_list expectedTypes;
   va_start(expectedTypes, str);
@@ -61,7 +62,6 @@ void testLexer(const char *str, ...) {
   printLog("================================", 0);
   va_end(expectedTypes);
 
-  /* only now should we free any buffers we've allocated */
   free(debugLine);
   free(StringStore);
 }

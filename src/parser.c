@@ -36,6 +36,7 @@ PrefixParseFunction findPrefixParseFunction(token_type Token);
 ast_base *parsePrefixExpression(parser *Parser);
 ast_base *parseIdentifier(parser *Parser);
 ast_base *parseIntegerLiteral(parser *Parser);
+ast_base *parseDoubleLiteral(parser *Parser);
 ast_base *parseBoolean(parser *Parser);
 ast_base *parseGroupedExpression(parser *Parser);
 ast_base *parseIfExpression(parser *Parser);
@@ -191,6 +192,7 @@ void nextToken(parser *Parser) {
   Parser->CurToken = Parser->PeekToken;
   Parser->CurString = Parser->Lexer->String;
   Parser->CurInteger = Parser->Lexer->Integer;
+  Parser->CurDouble = Parser->Lexer->Double;
 
   Parser->PeekToken = NextToken(Parser->Lexer);
 }
@@ -203,6 +205,8 @@ PrefixParseFunction findPrefixParseFunction(token_type Token) {
     return parseIdentifier;
   case TOKEN_INT:
     return parseIntegerLiteral;
+  case TOKEN_DOUBLE:
+    return parseDoubleLiteral;
   case TOKEN_BANG:
   case TOKEN_MINUS:
     return parsePrefixExpression;
@@ -237,7 +241,7 @@ InfixParseFunction findInfixParseFunction(token_type Token) {
   case TOKEN_LPAREN:
     return parseFunctionCallExppression;
   default:
-    printf("no prefix parse function for (%s) found\n", TokenType[Token]);
+    printf("no infix parse function for (%s) found\n", TokenType[Token]);
     return NULL;
   }
 }
@@ -338,6 +342,15 @@ ast_base *parseIntegerLiteral(parser *Parser) {
 
   Integer->Integer = Parser->CurInteger;
   return (ast_base *)Integer;
+}
+
+/* parses a double (e.g. 1.23, 43.2, etc.) */
+ast_base *parseDoubleLiteral(parser *Parser) {
+  ast_double_literal *Double = (ast_double_literal *)astBaseNodeCreate(
+      Parser, sizeof(ast_double_literal), AST_DOUBLE_LITERAL);
+
+  Double->Double = Parser->CurDouble;
+  return (ast_base *)Double;
 }
 
 /* parses booleans true and false */

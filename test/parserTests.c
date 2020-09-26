@@ -1,7 +1,3 @@
-/**
- * IN PROGRESS - NIC - 24 sep 2020
- */
-
 void readBlock(ast_base *, va_list, int);
 
 void testParser(const char *str, ...) {
@@ -27,7 +23,6 @@ void testParser(const char *str, ...) {
   printLog("================================", 0);
   va_end(expectedTypes);
 
-  /* only now should we free any buffers we've allocated */
   free(debugLine);
   free(StringStore);
 }

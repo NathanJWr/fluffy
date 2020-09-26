@@ -1,5 +1,6 @@
 #define OBJECT_TYPE_LIST                                                       \
   X(OBJECT_INTEGER)                                                            \
+  X(OBJECT_DOUBLE)                                                             \
   X(OBJECT_BOOLEAN)                                                            \
   X(OBJECT_NULL)                                                               \
   X(OBJECT_RETURN)                                                             \
@@ -29,6 +30,12 @@ typedef struct {
 
   long Value;
 } object_integer;
+
+typedef struct {
+  object Base;
+
+  double Value;
+} object_double;
 
 typedef struct {
   object Base;
