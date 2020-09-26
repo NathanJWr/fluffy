@@ -1,6 +1,5 @@
 #define OBJECT_TYPE_LIST                                                       \
-  X(OBJECT_INTEGER)                                                            \
-  X(OBJECT_DOUBLE)                                                             \
+  X(OBJECT_NUMBER)                                                             \
   X(OBJECT_BOOLEAN)                                                            \
   X(OBJECT_NULL)                                                               \
   X(OBJECT_RETURN)                                                             \
@@ -28,14 +27,12 @@ typedef struct {
 typedef struct {
   object Base;
 
-  long Value;
-} object_integer;
-
-typedef struct {
-  object Base;
-
-  double Value;
-} object_double;
+  num_type type;
+  union {
+    long Int;
+    double Dbl;
+  };
+} object_number;
 
 typedef struct {
   object Base;
@@ -71,3 +68,5 @@ typedef struct {
 object *NewObject(object_type Type, unsigned int Size);
 object *NewError(const char *Message, ...);
 void PrintObject(object *Obj);
+
+#define NewNumber() ((object_number *) NewObject(OBJECT_NUMBER, sizeof(object_number)))

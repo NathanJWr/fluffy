@@ -15,6 +15,7 @@
 /* project includes */
 #include "src/defines.h"
 #include "src/stretchy_array.h"
+#include "src/number.h"
 #include "src/token.h"
 #include "src/ast.h"
 #include "src/object.h"

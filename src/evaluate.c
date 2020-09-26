@@ -9,8 +9,8 @@ object *evalPrefixExpression(token_type Op, object *Obj);
 object *evalBangOperatorExpression(object *Ojb);
 object *evalMinusPrefixOperatorExpression(object *Obj);
 object *evalInfixExpression(token_type Op, object *Left, object *Right);
-object *evalIntegerInfixExpression(token_type Op, object_integer *Left,
-                                   object_integer *Right);
+object *evalNumberInfixExpression(token_type Op, object_number *Left,
+                                  object_number *Right);
 object *evalBooleanInfixExpression(token_type Op, object_boolean *Left,
                                    object_boolean *Right);
 bool isTruthy(object *Obj);
@@ -31,18 +31,23 @@ object *Eval(ast_base *Node, environment *Env) {
     return evalProgram((ast_program *)Node, Env);
   } break;
 
-  case AST_INTEGER_LITERAL: {
-    object_integer *Int =
-        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
-    Int->Value = ((ast_integer_literal *)Node)->Integer;
-    return (object *)Int;
-  } break;
-
-  case AST_DOUBLE_LITERAL: {
-    object_double *Dbl =
-        (object_double *)NewObject(OBJECT_DOUBLE, sizeof(object_double));
-    Dbl->Value = ((ast_double_literal *)Node)->Double;
-    return (object *)Dbl;
+  case AST_NUMBER: {
+    object_number *Num =
+        (object_number *)NewObject(OBJECT_NUMBER, sizeof(object_number));
+    Num->type = ((ast_number *)Node)->type;
+    switch (Num->type) {
+    case num_integer: {
+      Num->Int = ((ast_number *)Node)->Int;
+    } break;
+    case num_double: {
+      Num->Dbl = ((ast_number *)Node)->Dbl;
+    } break;
+    default: {
+      printf("Failed to build numeric object\n"); /* TODO: Can we throw an error
+                                                     here? */
+    } break;
+    }
+    return (object *)Num;
   } break;
 
   case AST_BOOLEAN: {
@@ -278,10 +283,20 @@ object *evalBangOperatorExpression(object *Obj) {
     return (object *)(Bool);
   } break;
 
-  case OBJECT_INTEGER: {
+  case OBJECT_NUMBER: {
     object_boolean *Bool =
         (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
-    Bool->Value = !((object_integer *)Obj)->Value;
+    switch (((object_number *)Obj)->type) {
+    case num_integer: {
+      Bool->Value = !((object_number *)Obj)->Int;
+    } break;
+    case num_double: {
+      Bool->Value = !((object_number *)Obj)->Dbl;
+    } break;
+    default:
+      /* TODO: THROW ERROR */
+      break;
+    }
     return (object *)(Bool);
   } break;
 
@@ -293,11 +308,22 @@ object *evalBangOperatorExpression(object *Obj) {
 
 object *evalMinusPrefixOperatorExpression(object *Obj) {
   switch (Obj->Type) {
-  case OBJECT_INTEGER: {
-    object_integer *Int =
-        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
-    Int->Value = -((object_integer *)Obj)->Value;
-    return (object *)Int;
+  case OBJECT_NUMBER: {
+    object_number *Num =
+        (object_number *)NewObject(OBJECT_NUMBER, sizeof(object_number));
+    Num->type = -((object_number *)Obj)->type;
+    switch (Num->type) {
+    case num_integer: {
+      Num->Int = -((object_number *)Obj)->Int;
+    } break;
+    case num_double: {
+      Num->Dbl = -((object_number *)Obj)->Dbl;
+    } break;
+    default:
+      /* TODO: THROW ERROR */
+      break;
+    }
+    return (object *)Num;
   } break;
 
   default: {
@@ -310,9 +336,9 @@ object *evalInfixExpression(token_type Op, object *Left, object *Right) {
   if (Left->Type == Right->Type) {
     switch (Left->Type) {
 
-    case OBJECT_INTEGER: {
-      return evalIntegerInfixExpression(Op, (object_integer *)Left,
-                                        (object_integer *)Right);
+    case OBJECT_NUMBER: {
+      return evalNumberInfixExpression(Op, (object_number *)Left,
+                                       (object_number *)Right);
     } break;
 
     case OBJECT_BOOLEAN: {
@@ -330,62 +356,117 @@ object *evalInfixExpression(token_type Op, object *Left, object *Right) {
   }
 }
 
-object *evalIntegerInfixExpression(token_type Op, object_integer *Left,
-                                   object_integer *Right) {
+
+object *evalNumberInfixExpression(token_type Op, object_number *Left,
+                                  object_number *Right) {
+  object_number *Result =
+      (object_number *)NewObject(OBJECT_NUMBER, sizeof(object_number));
+  object_boolean *ResultBool =
+      (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
+  /* Cast result to the largest type of left and right */
+  Result->type = max(Left->type, Right->type);
+  /* We will be comparing/mathing doubles here */
+  double left, right, delta, epsilon = __DBL_EPSILON__;
+  switch (Left->type) {
+  case num_integer: {
+    left = (double)Left->Int;
+  } break;
+  case num_double: {
+    left = Left->Dbl;
+  } break;
+  default:
+    break;
+  }
+  switch (Right->type) {
+  case num_integer: {
+    right = (double)Right->Int;
+  } break;
+  case num_double: {
+    right = Right->Dbl;
+  } break;
+  default:
+    break;
+  }
+  /* For some comparisons, find the delta between the two values */
+  delta = abs(left - right);
   switch (Op) {
   case TOKEN_PLUS: {
-    object_integer *Result =
-        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
-    Result->Value = Left->Value + Right->Value;
-    return (object *)Result;
+    switch (Result->type) {
+    case num_integer: {
+      Result->Int = (int)(left + right);
+      return (object *)Result;
+    } break;
+    case num_double: {
+      Result->Dbl = left + right;
+      return (object *)Result;
+    } break;
+    default: return NULL;
+      break;
+    }
   } break;
 
   case TOKEN_MINUS: {
-    object_integer *Result =
-        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
-    Result->Value = Left->Value - Right->Value;
-    return (object *)Result;
+    switch (Result->type) {
+    case num_integer: {
+      Result->Int = (int)(left - right);
+      return (object *)Result;
+    } break;
+    case num_double: {
+      Result->Dbl = left - right;
+      return (object *)Result;
+    } break;
+    default: return NULL;
+      break;
+    }
   } break;
 
   case TOKEN_SLASH: {
-    object_integer *Result =
-        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
-    Result->Value = Left->Value / Right->Value;
-    return (object *)Result;
+    switch (Result->type) {
+    case num_integer: {
+      Result->Int = (int)(left / right);
+      return (object *)Result;
+    } break;
+    case num_double: {
+      Result->Dbl = left / right;
+      return (object *)Result;
+    } break;
+    default: return NULL;
+      break;
+    }
   } break;
 
   case TOKEN_ASTERISK: {
-    object_integer *Result =
-        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
-    Result->Value = Left->Value * Right->Value;
-    return (object *)Result;
+    switch (Result->type) {
+    case num_integer: {
+      Result->Int = (int)(left * right);
+      return (object *)Result;
+    } break;
+    case num_double: {
+      Result->Dbl = left * right;
+      return (object *)Result;
+    } break;
+    default: return NULL;
+      break;
+    }
   } break;
 
   case TOKEN_LT: {
-    object_boolean *Result =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
-    Result->Value = Left->Value < Right->Value;
+    ResultBool->Value = left < right;
     return (object *)Result;
   } break;
 
   case TOKEN_GT: {
-    object_boolean *Result =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
-    Result->Value = Left->Value > Right->Value;
+    ResultBool->Value = left > right;
     return (object *)Result;
   } break;
 
   case TOKEN_EQ: {
-    object_boolean *Result =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
-    Result->Value = Left->Value == Right->Value;
+    ResultBool->Value = delta <= epsilon;
     return (object *)Result;
   } break;
 
   case TOKEN_NOT_EQ: {
-    object_boolean *Result =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
-    Result->Value = Left->Value != Right->Value;
+    ResultBool->Value = delta > epsilon;
     return (object *)Result;
   } break;
 
@@ -428,8 +509,18 @@ bool isTruthy(object *Obj) {
   case OBJECT_BOOLEAN: {
     return ((object_boolean *)Obj)->Value;
   } break;
-  case OBJECT_INTEGER: {
-    return ((object_integer *)Obj)->Value != 0;
+  case OBJECT_NUMBER: {
+    switch (((object_number *)Obj)->type) {
+    case num_integer: {
+      return ((object_number *)Obj)->Int != 0;
+    } break;
+    case num_double: {
+      return ((object_number *)Obj)->Dbl != 0;
+    } break;
+    default:
+      /* TODO: THROW ERROR */
+      break;
+    }
   }
   default: {
     return true;

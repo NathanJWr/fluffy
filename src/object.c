@@ -26,12 +26,19 @@ object *NewError(const char *Message, ...) {
 void PrintObject(object *Obj) {
   switch (Obj->Type) {
 
-  case OBJECT_INTEGER: {
-    printf("%ld", ((object_integer *)Obj)->Value);
-  } break;
-
-  case OBJECT_DOUBLE: {
-    printf("%lf", ((object_double *)Obj)->Value);
+  case OBJECT_NUMBER: {
+    switch (((object_number*)Obj)->type)
+    {
+    case num_integer: {
+      printf("%ld", ((object_number *)Obj)->Int);
+    } break;
+    case num_double: {
+      printf("%lf", ((object_number *)Obj)->Dbl);
+    } break;
+    default:
+      /* TODO: THROW ERROR */
+      break;
+    }
   } break;
 
   case OBJECT_BOOLEAN: {
