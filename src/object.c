@@ -44,6 +44,10 @@ void PrintObject(object *Obj) {
     (((object_boolean *)Obj)->Value) ? printf("true") : printf("false");
   } break;
 
+  case OBJECT_STRING: {
+    printf("%s", ((object_string *)Obj)->Value);
+  } break;
+
   case OBJECT_NULL: {
     printf("NULL");
   } break;

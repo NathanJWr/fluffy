@@ -13,7 +13,7 @@ size_t fastModulus(size_t Hash, size_t BucketLength) {
 }
 
 bool isBucketEmpty(object_bucket *Objects, unsigned int Index) {
-  return (Objects[Index].ProbeSequenceLength == -1);
+  return (Objects[Index].ProbeSequenceLength == 0);
 }
 
 void findSpotForKey(object_bucket *Objects, object_bucket Item,
@@ -88,11 +88,6 @@ void InitEnv(environment *Env, unsigned int Size) {
   memset(Env->Objects, 0, AllocSize);
 
   Env->Outer = NULL;
-
-  /* Set all the ProbeSequenceLengths to -1 so we know what slots are empty */
-  for (i = 0; i < Env->ObjectsLength; i++) {
-    Env->Objects[i].ProbeSequenceLength = -1;
-  }
 }
 
 void AddToEnv(environment *Env, const char *Var, object *Obj) {
@@ -108,7 +103,7 @@ void AddToEnv(environment *Env, const char *Var, object *Obj) {
   Index = fastModulus(Hash, Env->ObjectsLength);
 
   Item =
-      (object_bucket){.ProbeSequenceLength = 0, .Var = (char *)Var, .Obj = Obj};
+      (object_bucket){.ProbeSequenceLength = 1, .Var = (char *)Var, .Obj = Obj};
 
   /* Check if the index is empty. If it is we can put our Obj right there */
   if (isBucketEmpty(Env->Objects, Index)) {
@@ -198,6 +193,11 @@ void markAnySubObjects(object_bucket *Bucket) {
     if (!GCMarked(Func->Env)) {
       EnvironmentMark(Func->Env);
     }
+  } break;
+
+  case OBJECT_STRING: {
+    object_string *Str = (object_string *)Obj;
+    GCMarkAllocation(Str->Value);
   } break;
   }
 }

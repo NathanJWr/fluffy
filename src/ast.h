@@ -12,6 +12,7 @@
   X(AST_INFIX_EXPRESSION)                                                      \
   X(AST_VAR_STATEMENT)                                                         \
   X(AST_RETURN_STATEMENT)                                                      \
+  X(AST_STRING)                                                                \
   XX(AST_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -114,3 +115,9 @@ typedef struct {
 
   ast_base *Expr;
 } ast_return_statement;
+
+typedef struct {
+  ast_base Base;
+
+  char *Value;
+} ast_string;

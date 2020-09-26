@@ -1,6 +1,7 @@
 #define OBJECT_TYPE_LIST                                                       \
   X(OBJECT_NUMBER)                                                             \
   X(OBJECT_BOOLEAN)                                                            \
+  X(OBJECT_STRING)                                                             \
   X(OBJECT_NULL)                                                               \
   X(OBJECT_RETURN)                                                             \
   X(OBJECT_ERROR)                                                              \
@@ -39,6 +40,12 @@ typedef struct {
 
   bool Value;
 } object_boolean;
+
+typedef struct {
+  object Base;
+
+  char *Value;
+} object_string;
 
 typedef struct {
   object Base;
