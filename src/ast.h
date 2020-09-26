@@ -46,7 +46,7 @@ typedef struct {
 typedef struct {
   ast_base Base;
 
-  num_type type;
+  num_type Type;
   union {
     long Int;
     double Dbl;

@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <stdarg.h>
+#include <assert.h>
 
 /* debug includes */
 #include "src/leak_checker.h"

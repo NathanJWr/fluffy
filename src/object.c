@@ -27,17 +27,16 @@ void PrintObject(object *Obj) {
   switch (Obj->Type) {
 
   case OBJECT_NUMBER: {
-    switch (((object_number*)Obj)->type)
-    {
+    switch (((object_number *)Obj)->Type) {
     case num_integer: {
       printf("%ld", ((object_number *)Obj)->Int);
     } break;
     case num_double: {
       printf("%lf", ((object_number *)Obj)->Dbl);
     } break;
-    default:
-      /* TODO: THROW ERROR */
-      break;
+    default: {
+      assert(0);
+    } break;
     }
   } break;
 

@@ -27,7 +27,7 @@ typedef struct {
 typedef struct {
   object Base;
 
-  num_type type;
+  num_type Type;
   union {
     long Int;
     double Dbl;
@@ -69,4 +69,14 @@ object *NewObject(object_type Type, unsigned int Size);
 object *NewError(const char *Message, ...);
 void PrintObject(object *Obj);
 
-#define NewNumber() ((object_number *) NewObject(OBJECT_NUMBER, sizeof(object_number)))
+/* Constructors for other objects */
+
+#define NewNumber()                                                            \
+  ((object_number *)NewObject(OBJECT_NUMBER, sizeof(object_number)))
+#define NewBoolean()                                                           \
+  ((object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean)))
+#define NewNull() ((object_null *)NewObject(OBJECT_NULL, sizeof(object_null)))
+#define NewReturn()                                                            \
+  ((object_return *)NewObject(OBJECT_RETURN, sizeof(object_return)))
+#define NewFunction()                                                          \
+  ((object_function *)NewObject(OBJECT_FUNCTION, sizeof(object_function)))
