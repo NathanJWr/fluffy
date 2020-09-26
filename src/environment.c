@@ -79,7 +79,6 @@ void possiblRehashAndResize(environment *Env) {
 
 void InitEnv(environment *Env, unsigned int Size) {
   /* Note: Using power of two array sizes for faster modulus */
-  unsigned int i;
   unsigned int AllocSize = sizeof(object_bucket) * Size;
   Env->ObjectsLength = Size;
   Env->ObjectsExist = 0;
