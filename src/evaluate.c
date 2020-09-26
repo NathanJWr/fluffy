@@ -497,7 +497,7 @@ object *evalNumberInfixExpression(token_type Op, object_number *Left,
   }
   }
 }
-  
+
 object *evalStringInfixExpression(token_type Op, object_string *Left,
                                   object_string *Right) {
   switch (Op) {
