@@ -348,19 +348,21 @@ ast_base *parseString(parser *Parser) {
 
 /* parses an integer (e.g. 123, 432, etc.) */
 ast_base *parseIntegerLiteral(parser *Parser) {
-  ast_integer_literal *Integer = (ast_integer_literal *)astBaseNodeCreate(
-      Parser, sizeof(ast_integer_literal), AST_INTEGER_LITERAL);
+  ast_number *Integer =
+      (ast_number *)astBaseNodeCreate(Parser, sizeof(ast_number), AST_NUMBER);
 
-  Integer->Integer = Parser->CurInteger;
+  Integer->Type = num_integer;
+  Integer->Int = Parser->CurInteger;
   return (ast_base *)Integer;
 }
 
 /* parses a double (e.g. 1.23, 43.2, etc.) */
 ast_base *parseDoubleLiteral(parser *Parser) {
-  ast_double_literal *Double = (ast_double_literal *)astBaseNodeCreate(
-      Parser, sizeof(ast_double_literal), AST_DOUBLE_LITERAL);
+  ast_number *Double =
+      (ast_number *)astBaseNodeCreate(Parser, sizeof(ast_number), AST_NUMBER);
 
-  Double->Double = Parser->CurDouble;
+  Double->Type = num_double;
+  Double->Dbl = Parser->CurDouble;
   return (ast_base *)Double;
 }
 
@@ -564,8 +566,18 @@ void debugPrintAstNode(ast_base *Node) {
     debugPrintAstNode(Infix->Right);
     printf(")");
   } break;
-  case AST_INTEGER_LITERAL: {
-    printf("%ld", ((ast_integer_literal *)Node)->Integer);
+  case AST_NUMBER: {
+    switch (((ast_number *)Node)->Type) {
+    case num_integer: {
+      printf("%ld", ((ast_number *)Node)->Int);
+    } break;
+    case num_double: {
+      printf("%lf", ((ast_number *)Node)->Dbl);
+    } break;
+    default: {
+      assert(0);
+    } break;
+    }
   } break;
   case AST_PREFIX_EXPRESSION: {
     ast_prefix_expression *Prefix = (ast_prefix_expression *)Node;

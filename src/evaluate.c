@@ -9,8 +9,8 @@ object *evalPrefixExpression(token_type Op, object *Obj);
 object *evalBangOperatorExpression(object *Ojb);
 object *evalMinusPrefixOperatorExpression(object *Obj);
 object *evalInfixExpression(token_type Op, object *Left, object *Right);
-object *evalIntegerInfixExpression(token_type Op, object_integer *Left,
-                                   object_integer *Right);
+object *evalNumberInfixExpression(token_type Op, object_number *Left,
+                                  object_number *Right);
 object *evalStringInfixExpression(token_type Op, object_string *Left,
                                   object_string *Right);
 object *evalBooleanInfixExpression(token_type Op, object_boolean *Left,
@@ -34,23 +34,25 @@ object *Eval(ast_base *Node, environment *Env) {
     return evalProgram((ast_program *)Node, Env);
   } break;
 
-  case AST_INTEGER_LITERAL: {
-    object_integer *Int =
-        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
-    Int->Value = ((ast_integer_literal *)Node)->Integer;
-    return (object *)Int;
-  } break;
-
-  case AST_DOUBLE_LITERAL: {
-    object_double *Dbl =
-        (object_double *)NewObject(OBJECT_DOUBLE, sizeof(object_double));
-    Dbl->Value = ((ast_double_literal *)Node)->Double;
-    return (object *)Dbl;
+  case AST_NUMBER: {
+    object_number *Num = NewNumber();
+    Num->Type = ((ast_number *)Node)->Type;
+    switch (Num->Type) {
+    case num_integer: {
+      Num->Int = ((ast_number *)Node)->Int;
+    } break;
+    case num_double: {
+      Num->Dbl = ((ast_number *)Node)->Dbl;
+    } break;
+    default: {
+      assert(0);
+    } break;
+    }
+    return (object *)Num;
   } break;
 
   case AST_BOOLEAN: {
-    object_boolean *Bool =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
+    object_boolean *Bool = NewBoolean();
     Bool->Value = ((ast_boolean *)Node)->Value;
     return (object *)Bool;
   } break;
@@ -104,8 +106,7 @@ object *Eval(ast_base *Node, environment *Env) {
   } break;
 
   case AST_RETURN_STATEMENT: {
-    object_return *Return =
-        (object_return *)NewObject(OBJECT_RETURN, sizeof(object_return));
+    object_return *Return = NewReturn();
     object *Retval = Eval(((ast_return_statement *)Node)->Expr, Env);
     Return->Retval = Retval;
     return (object *)Return;
@@ -134,8 +135,7 @@ object *Eval(ast_base *Node, environment *Env) {
 
   case AST_FUNCTION_LITERAL: {
     ast_function_literal *Fn = (ast_function_literal *)Node;
-    object_function *FnObj =
-        (object_function *)NewObject(OBJECT_FUNCTION, sizeof(object_function));
+    object_function *FnObj = NewFunction();
     FnObj->Parameters = (ast_identifier **)Fn->Parameters;
     FnObj->Body = (ast_block_statement *)Fn->Body;
     FnObj->Env = Env;
@@ -282,16 +282,24 @@ object *evalBangOperatorExpression(object *Obj) {
   switch (Obj->Type) {
 
   case OBJECT_BOOLEAN: {
-    object_boolean *Bool =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
+    object_boolean *Bool = NewBoolean();
     Bool->Value = !((object_boolean *)Obj)->Value;
     return (object *)(Bool);
   } break;
 
-  case OBJECT_INTEGER: {
-    object_boolean *Bool =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
-    Bool->Value = !((object_integer *)Obj)->Value;
+  case OBJECT_NUMBER: {
+    object_boolean *Bool = NewBoolean();
+    switch (((object_number *)Obj)->Type) {
+    case num_integer: {
+      Bool->Value = !((object_number *)Obj)->Int;
+    } break;
+    case num_double: {
+      Bool->Value = !((object_number *)Obj)->Dbl;
+    } break;
+    default: {
+      assert(0);
+    } break;
+    }
     return (object *)(Bool);
   } break;
 
@@ -303,11 +311,21 @@ object *evalBangOperatorExpression(object *Obj) {
 
 object *evalMinusPrefixOperatorExpression(object *Obj) {
   switch (Obj->Type) {
-  case OBJECT_INTEGER: {
-    object_integer *Int =
-        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
-    Int->Value = -((object_integer *)Obj)->Value;
-    return (object *)Int;
+  case OBJECT_NUMBER: {
+    object_number *Num = NewNumber();
+    Num->Type = -((object_number *)Obj)->Type;
+    switch (Num->Type) {
+    case num_integer: {
+      Num->Int = -((object_number *)Obj)->Int;
+    } break;
+    case num_double: {
+      Num->Dbl = -((object_number *)Obj)->Dbl;
+    } break;
+    default: {
+      assert(0);
+    } break;
+    }
+    return (object *)Num;
   } break;
 
   default: {
@@ -320,9 +338,9 @@ object *evalInfixExpression(token_type Op, object *Left, object *Right) {
   if (Left->Type == Right->Type) {
     switch (Left->Type) {
 
-    case OBJECT_INTEGER: {
-      return evalIntegerInfixExpression(Op, (object_integer *)Left,
-                                        (object_integer *)Right);
+    case OBJECT_NUMBER: {
+      return evalNumberInfixExpression(Op, (object_number *)Left,
+                                       (object_number *)Right);
     } break;
 
     case OBJECT_BOOLEAN: {
@@ -345,6 +363,141 @@ object *evalInfixExpression(token_type Op, object *Left, object *Right) {
   }
 }
 
+object *evalNumberInfixExpression(token_type Op, object_number *Left,
+                                  object_number *Right) {
+  /* We will be comparing/matching doubles here */
+  double LeftVal, RightVal, Delta, Epsilon = __DBL_EPSILON__;
+  switch (Left->Type) {
+  case num_integer: {
+    LeftVal = Left->Int;
+  } break;
+  case num_double: {
+    LeftVal = Left->Dbl;
+  } break;
+  default: {
+    assert(0);
+  } break;
+  }
+  switch (Right->Type) {
+  case num_integer: {
+    RightVal = Right->Int;
+  } break;
+  case num_double: {
+    RightVal = Right->Dbl;
+  } break;
+  default:
+    break;
+  }
+  /* For some comparisons, find the delta between the two values */
+  Delta = abs(LeftVal - RightVal);
+  switch (Op) {
+  case TOKEN_PLUS: {
+    object_number *Result = NewNumber();
+    /* Cast result to the largest type of LeftVal and RightVal */
+    Result->Type = max(Left->Type, Right->Type);
+    switch (Result->Type) {
+    case num_integer: {
+      Result->Int = LeftVal + RightVal;
+      return (object *)Result;
+    } break;
+    case num_double: {
+      Result->Dbl = LeftVal + RightVal;
+      return (object *)Result;
+    } break;
+    default: {
+      assert(0);
+    } break;
+    }
+  } break;
+
+  case TOKEN_MINUS: {
+    object_number *Result = NewNumber();
+    /* Cast result to the largest type of LeftVal and RightVal */
+    Result->Type = max(Left->Type, Right->Type);
+    switch (Result->Type) {
+    case num_integer: {
+      Result->Int = LeftVal - RightVal;
+      return (object *)Result;
+    } break;
+    case num_double: {
+      Result->Dbl = LeftVal - RightVal;
+      return (object *)Result;
+    } break;
+    default: {
+      assert(0);
+    } break;
+    }
+  } break;
+
+  case TOKEN_SLASH: {
+    object_number *Result = NewNumber();
+    /* Cast result to the largest type of LeftVal and RightVal */
+    Result->Type = max(Left->Type, Right->Type);
+    switch (Result->Type) {
+    case num_integer: {
+      Result->Int = LeftVal / RightVal;
+      return (object *)Result;
+    } break;
+    case num_double: {
+      Result->Dbl = LeftVal / RightVal;
+      return (object *)Result;
+    } break;
+    default: {
+      assert(0);
+    } break;
+    }
+  } break;
+
+  case TOKEN_ASTERISK: {
+    object_number *Result = NewNumber();
+    /* Cast result to the largest type of LeftVal and RightVal */
+    Result->Type = max(Left->Type, Right->Type);
+    switch (Result->Type) {
+    case num_integer: {
+      Result->Int = LeftVal * RightVal;
+      return (object *)Result;
+    } break;
+    case num_double: {
+      Result->Dbl = LeftVal * RightVal;
+      return (object *)Result;
+    } break;
+    default: {
+      assert(0);
+    } break;
+    }
+  } break;
+
+  case TOKEN_LT: {
+    object_boolean *ResultBool = NewBoolean();
+    ResultBool->Value = LeftVal < RightVal;
+    return (object *)ResultBool;
+  } break;
+
+  case TOKEN_GT: {
+    object_boolean *ResultBool = NewBoolean();
+    ResultBool->Value = LeftVal > RightVal;
+    return (object *)ResultBool;
+  } break;
+
+  case TOKEN_EQ: {
+    object_boolean *ResultBool = NewBoolean();
+    ResultBool->Value = Delta <= Epsilon;
+    return (object *)ResultBool;
+  } break;
+
+  case TOKEN_NOT_EQ: {
+    object_boolean *ResultBool = NewBoolean();
+    ResultBool->Value = Delta > Epsilon;
+    return (object *)ResultBool;
+  } break;
+
+  default: {
+    return NewError("unknown operator: %s %s %s", ObjectType[Left->Base.Type],
+                    TokenType[Op], ObjectType[Right->Base.Type]);
+  }
+  }
+}
+  
 object *evalStringInfixExpression(token_type Op, object_string *Left,
                                   object_string *Right) {
   switch (Op) {
@@ -382,86 +535,18 @@ object *evalStringInfixExpression(token_type Op, object_string *Left,
   }
 }
 
-object *evalIntegerInfixExpression(token_type Op, object_integer *Left,
-                                   object_integer *Right) {
-  switch (Op) {
-  case TOKEN_PLUS: {
-    object_integer *Result =
-        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
-    Result->Value = Left->Value + Right->Value;
-    return (object *)Result;
-  } break;
-
-  case TOKEN_MINUS: {
-    object_integer *Result =
-        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
-    Result->Value = Left->Value - Right->Value;
-    return (object *)Result;
-  } break;
-
-  case TOKEN_SLASH: {
-    object_integer *Result =
-        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
-    Result->Value = Left->Value / Right->Value;
-    return (object *)Result;
-  } break;
-
-  case TOKEN_ASTERISK: {
-    object_integer *Result =
-        (object_integer *)NewObject(OBJECT_INTEGER, sizeof(object_integer));
-    Result->Value = Left->Value * Right->Value;
-    return (object *)Result;
-  } break;
-
-  case TOKEN_LT: {
-    object_boolean *Result =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
-    Result->Value = Left->Value < Right->Value;
-    return (object *)Result;
-  } break;
-
-  case TOKEN_GT: {
-    object_boolean *Result =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
-    Result->Value = Left->Value > Right->Value;
-    return (object *)Result;
-  } break;
-
-  case TOKEN_EQ: {
-    object_boolean *Result =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
-    Result->Value = Left->Value == Right->Value;
-    return (object *)Result;
-  } break;
-
-  case TOKEN_NOT_EQ: {
-    object_boolean *Result =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
-    Result->Value = Left->Value != Right->Value;
-    return (object *)Result;
-  } break;
-
-  default: {
-    return NewError("unknown operator: %s %s %s", ObjectType[Left->Base.Type],
-                    TokenType[Op], ObjectType[Right->Base.Type]);
-  }
-  }
-}
-
 object *evalBooleanInfixExpression(token_type Op, object_boolean *Left,
                                    object_boolean *Right) {
   switch (Op) {
 
   case TOKEN_EQ: {
-    object_boolean *Return =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
+    object_boolean *Return = NewBoolean();
     Return->Value = Left->Value == Right->Value;
     return (object *)Return;
   } break;
 
   case TOKEN_NOT_EQ: {
-    object_boolean *Return =
-        (object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean));
+    object_boolean *Return = NewBoolean();
     Return->Value = Left->Value != Right->Value;
     return (object *)Return;
   } break;
@@ -480,8 +565,18 @@ bool isTruthy(object *Obj) {
   case OBJECT_BOOLEAN: {
     return ((object_boolean *)Obj)->Value;
   } break;
-  case OBJECT_INTEGER: {
-    return ((object_integer *)Obj)->Value != 0;
+  case OBJECT_NUMBER: {
+    switch (((object_number *)Obj)->Type) {
+    case num_integer: {
+      return ((object_number *)Obj)->Int != 0;
+    } break;
+    case num_double: {
+      return ((object_number *)Obj)->Dbl != 0;
+    } break;
+    default: {
+      assert(0);
+    } break;
+    }
   }
   default: {
     return true;
