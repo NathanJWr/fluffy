@@ -51,7 +51,9 @@ typedef struct {
 typedef struct {
   object Base;
 
-  object **Items; /* stretchy array */
+  /* Array of pointers to object* stored elsewhere */
+  /* This is done so we don't invalidate pointers by resizing the array */
+  object ***Items; /* gc stretchy array */
 } object_array;
 
 typedef struct {
