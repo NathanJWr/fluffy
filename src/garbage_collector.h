@@ -21,6 +21,7 @@
  * */
 
 void *GCMalloc(unsigned int Size);
+void *GCRealloc(void *Allocation, unsigned int Size);
 void GCMarkAllocation(void *Allocation);
 bool GCMarked(void *Allocation);
 void GCMarkAndSweep(environment *Env);

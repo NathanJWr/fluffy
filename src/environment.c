@@ -205,7 +205,9 @@ void markAnySubObjects(object_bucket *Bucket) {
     object_array *Arr = (object_array *)Obj;
     unsigned int i;
     unsigned int ArrLength = ArraySize(Arr->Items);
+    GCArrayMarkAllocation(Arr->Items);
     for (i = 0; i < ArrLength; i++) {
+      GCMarkAllocation(*Arr->Items[i]);
       GCMarkAllocation(Arr->Items[i]);
     }
   } break;

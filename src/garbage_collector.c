@@ -2,16 +2,19 @@ typedef struct gc_alloc_info {
   struct gc_alloc_info *Next;
   struct gc_alloc_info *Prev;
 
+  unsigned int Size;
   unsigned char Mark;
 } gc_alloc_info;
 
 static gc_alloc_info *GCHead = NULL;
+void GCRemoveNode(gc_alloc_info *Node);
 
 void *GCMalloc(unsigned int Size) {
   gc_alloc_info *Info = malloc(sizeof(gc_alloc_info) + Size);
   Info->Next = NULL;
   Info->Prev = NULL;
   Info->Mark = 0;
+  Info->Size = Size;
 
   if (GCHead) {
     Info->Next = GCHead;
@@ -20,6 +23,20 @@ void *GCMalloc(unsigned int Size) {
   GCHead = Info;
 
   return Info + 1;
+}
+
+void *GCRealloc(void *Allocation, unsigned int Size) {
+  gc_alloc_info *Info =
+      (gc_alloc_info *)((char *)Allocation - sizeof(gc_alloc_info));
+  char *NewAllocation = GCMalloc(Size);
+  gc_alloc_info *NewInfo =
+      (gc_alloc_info *)(NewAllocation - sizeof(gc_alloc_info));
+  if (NewInfo) {
+    memcpy(NewInfo + 1, Info + 1, Info->Size);
+    GCRemoveNode(Info);
+    return NewInfo + 1;
+  }
+  return NULL;
 }
 
 void GCMarkAllocation(void *Allocation) {

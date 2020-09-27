@@ -12,6 +12,7 @@
 #include <inttypes.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <float.h>
 
 /* debug includes */
 #include "src/leak_checker.h"
@@ -25,6 +26,7 @@
 #include "src/object.h"
 #include "src/environment.h"
 #include "src/garbage_collector.h"
+#include "src/stretchy_array_gc.h"
 #include "src/lexer.h"
 #include "src/parser.h"
 #include "src/evaluate.h"

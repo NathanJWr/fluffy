@@ -54,10 +54,10 @@ void PrintObject(object *Obj) {
     unsigned int ArrLength = ArraySize(Arr->Items);
     printf("[");
     for (i = 0; i < ArrLength - 1; i++) {
-      PrintObject(Arr->Items[i]);
+      PrintObject(*Arr->Items[i]);
       printf(", ");
     }
-    PrintObject(Arr->Items[i]);
+    PrintObject(*Arr->Items[i]);
     printf("]");
   } break;
 

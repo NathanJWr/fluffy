@@ -5,6 +5,7 @@ static object_null NullObject;
 object *evalProgram(ast_program *Program, environment *Env);
 object *evalBlock(ast_block_statement *Block, environment *Env);
 object **evalExpressions(ast_base **Exprs, environment *Env);
+object ***evalArrayItems(ast_base **Items, environment *Env);
 object *evalPrefixExpression(token_type Op, object *Obj);
 object *evalBangOperatorExpression(object *Ojb);
 object *evalMinusPrefixOperatorExpression(object *Obj);
@@ -69,7 +70,7 @@ object *Eval(ast_base *Node, environment *Env) {
     ast_array_literal *Arr = (ast_array_literal *)Node;
     object_array *ArrObject =
         (object_array *)NewObject(OBJECT_ARRAY, sizeof(object_array));
-    ArrObject->Items = evalExpressions(Arr->Items, Env);
+    ArrObject->Items = evalArrayItems(Arr->Items, Env);
     return (object *)ArrObject;
   } break;
 
@@ -238,6 +239,24 @@ object **evalExpressions(ast_base **Exprs, environment *Env) {
   return Result;
 }
 
+object ***evalArrayItems(ast_base **Items, environment *Env) {
+  object ***Result = NULL;
+  unsigned int i;
+  unsigned int ItemsLength = ArraySize(Items);
+
+  for (i = 0; i < ItemsLength; i++) {
+    object **EvaluatedPointer = GCMalloc(sizeof(object *));
+    *EvaluatedPointer = Eval(Items[i], Env);
+
+    GCArrayPush(Result, EvaluatedPointer);
+    if ((*EvaluatedPointer)->Type == OBJECT_ERROR) {
+      return Result;
+    }
+  }
+
+  return Result;
+}
+
 object *evalProgram(ast_program *Program, environment *Env) {
   object *Result;
   ast_base **Statements = Program->Statements;
@@ -375,7 +394,7 @@ object *evalInfixExpression(token_type Op, object *Left, object *Right) {
 object *evalNumberInfixExpression(token_type Op, object_number *Left,
                                   object_number *Right) {
   /* We will be comparing/matching doubles here */
-  double LeftVal, RightVal, Delta, Epsilon = __DBL_EPSILON__;
+  double LeftVal, RightVal, Delta, Epsilon = DBL_EPSILON;
   switch (Left->Type) {
   case num_integer: {
     LeftVal = Left->Int;
@@ -512,14 +531,15 @@ object *evalStringInfixExpression(token_type Op, object_string *Left,
   switch (Op) {
 
   case TOKEN_PLUS: {
-    unsigned int Size = strlen(Left->Value) + strlen(Right->Value) + 1;
-    char *Str = GCMalloc(Size);
-    strcat(Str, Left->Value);
-    strcat(Str, Right->Value);
+    unsigned int LeftSize = strlen(Left->Value);
+    unsigned int RightSize = strlen(Right->Value);
+    unsigned int Size = LeftSize + RightSize + 1;
 
     object_string *StrObj =
-        (object_string *)NewObject(OBJECT_STRING, sizeof(object_string));
-    StrObj->Value = Str;
+        (object_string *)NewObject(OBJECT_STRING, sizeof(object_string) + Size);
+    memcpy(StrObj->Value, Left->Value, LeftSize);
+    memcpy(StrObj->Value + LeftSize, Right->Value, RightSize);
+    StrObj->Value[Size - 1] = '\0';
     return (object *)StrObj;
   } break;
 
