@@ -512,14 +512,15 @@ object *evalStringInfixExpression(token_type Op, object_string *Left,
   switch (Op) {
 
   case TOKEN_PLUS: {
-    unsigned int Size = strlen(Left->Value) + strlen(Right->Value) + 1;
-    char *Str = GCMalloc(Size);
-    strcat(Str, Left->Value);
-    strcat(Str, Right->Value);
+    unsigned int LeftSize = strlen(Left->Value);
+    unsigned int RightSize = strlen(Right->Value);
+    unsigned int Size = LeftSize + RightSize + 1;
 
     object_string *StrObj =
-        (object_string *)NewObject(OBJECT_STRING, sizeof(object_string));
-    StrObj->Value = Str;
+        (object_string *)NewObject(OBJECT_STRING, sizeof(object_string) + Size);
+    memcpy(StrObj->Value, Left->Value, LeftSize);
+    memcpy(StrObj->Value + LeftSize, Right->Value, RightSize);
+    StrObj->Value[Size-1] = '\0';
     return (object *)StrObj;
   } break;
 
