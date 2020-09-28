@@ -167,6 +167,47 @@ object *Eval(ast_base *Node, environment *Env) {
     return RetObject;
   } break;
 
+  case AST_INDEX_EXPRESSION: {
+    ast_index *IndexExpr = (ast_index *)Node;
+    object *IndexEval = Eval(IndexExpr->Index, Env);
+    object_number *IndexNumber = NULL;
+    object *LookupObject = NULL;
+
+    if (IndexEval->Type == OBJECT_ERROR) {
+      return IndexEval;
+    }
+    /* We really care that the index is actaully a number */
+    if (IndexEval->Type != OBJECT_NUMBER) {
+      return NewError("index is not a number, is %s",
+                      ObjectType[IndexNumber->Type]);
+    }
+    IndexNumber = (object_number *)IndexEval;
+    /* We shouldn't try to index with a double */
+    if (IndexNumber->Type != NUM_INTEGER) {
+      return NewError("index is not and integer");
+    }
+
+    /* Find the object we want to index into */
+    LookupObject = FindInEnv(Env, IndexExpr->Var->Value);
+    switch (LookupObject->Type) {
+    case OBJECT_ARRAY: {
+      object_array *Arr = (object_array *)LookupObject;
+      /* Check the bounds of the array before accessing */
+      if (IndexNumber->Int < 0 || IndexNumber->Int >= ArraySize(Arr->Items)) {
+        return NewError(
+            "attempting to access array elements out of bounds with index %d",
+            IndexNumber->Int);
+      }
+      return *Arr->Items[IndexNumber->Int];
+    } break;
+
+    default: {
+      return NewError("cannot index object of type %s",
+                      ObjectType[LookupObject->Type]);
+    }
+    }
+  } break;
+
   default:
     /* TODO: @Nathan want to throw an error here? */
     return (object *)&NullObject;
