@@ -395,7 +395,7 @@ ast_base *parseIntegerLiteral(parser *Parser) {
   ast_number *Integer =
       (ast_number *)astBaseNodeCreate(Parser, sizeof(ast_number), AST_NUMBER);
 
-  Integer->Type = num_integer;
+  Integer->Type = NUM_INTEGER;
   Integer->Int = Parser->CurInteger;
   return (ast_base *)Integer;
 }
@@ -405,7 +405,7 @@ ast_base *parseDoubleLiteral(parser *Parser) {
   ast_number *Double =
       (ast_number *)astBaseNodeCreate(Parser, sizeof(ast_number), AST_NUMBER);
 
-  Double->Type = num_double;
+  Double->Type = NUM_DOUBLE;
   Double->Dbl = Parser->CurDouble;
   return (ast_base *)Double;
 }
@@ -612,10 +612,10 @@ void debugPrintAstNode(ast_base *Node) {
   } break;
   case AST_NUMBER: {
     switch (((ast_number *)Node)->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       printf("%ld", ((ast_number *)Node)->Int);
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       printf("%lf", ((ast_number *)Node)->Dbl);
     } break;
     default: {

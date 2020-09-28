@@ -396,10 +396,10 @@ object *evalNumberInfixExpression(token_type Op, object_number *Left,
   /* We will be comparing/matching doubles here */
   double LeftVal, RightVal, Delta, Epsilon = DBL_EPSILON;
   switch (Left->Type) {
-  case num_integer: {
+  case NUM_INTEGER: {
     LeftVal = Left->Int;
   } break;
-  case num_double: {
+  case NUM_DOUBLE: {
     LeftVal = Left->Dbl;
   } break;
   default: {
@@ -407,10 +407,10 @@ object *evalNumberInfixExpression(token_type Op, object_number *Left,
   } break;
   }
   switch (Right->Type) {
-  case num_integer: {
+  case NUM_INTEGER: {
     RightVal = Right->Int;
   } break;
-  case num_double: {
+  case NUM_DOUBLE: {
     RightVal = Right->Dbl;
   } break;
   default:

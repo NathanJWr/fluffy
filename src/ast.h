@@ -45,6 +45,11 @@ typedef struct {
   const char *Value;
 } ast_identifier;
 
+typedef enum {
+  NUM_INTEGER,
+  NUM_DOUBLE,
+} num_type;
+
 typedef struct {
   ast_base Base;
 
