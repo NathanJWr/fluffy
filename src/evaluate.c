@@ -39,10 +39,10 @@ object *Eval(ast_base *Node, environment *Env) {
     object_number *Num = NewNumber();
     Num->Type = ((ast_number *)Node)->Type;
     switch (Num->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Num->Int = ((ast_number *)Node)->Int;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Num->Dbl = ((ast_number *)Node)->Dbl;
     } break;
     default: {
@@ -318,10 +318,10 @@ object *evalBangOperatorExpression(object *Obj) {
   case OBJECT_NUMBER: {
     object_boolean *Bool = NewBoolean();
     switch (((object_number *)Obj)->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Bool->Value = !((object_number *)Obj)->Int;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Bool->Value = !((object_number *)Obj)->Dbl;
     } break;
     default: {
@@ -343,10 +343,10 @@ object *evalMinusPrefixOperatorExpression(object *Obj) {
     object_number *Num = NewNumber();
     Num->Type = -((object_number *)Obj)->Type;
     switch (Num->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Num->Int = -((object_number *)Obj)->Int;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Num->Dbl = -((object_number *)Obj)->Dbl;
     } break;
     default: {
@@ -424,11 +424,11 @@ object *evalNumberInfixExpression(token_type Op, object_number *Left,
     /* Cast result to the largest type of LeftVal and RightVal */
     Result->Type = max(Left->Type, Right->Type);
     switch (Result->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Result->Int = LeftVal + RightVal;
       return (object *)Result;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Result->Dbl = LeftVal + RightVal;
       return (object *)Result;
     } break;
@@ -443,11 +443,11 @@ object *evalNumberInfixExpression(token_type Op, object_number *Left,
     /* Cast result to the largest type of LeftVal and RightVal */
     Result->Type = max(Left->Type, Right->Type);
     switch (Result->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Result->Int = LeftVal - RightVal;
       return (object *)Result;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Result->Dbl = LeftVal - RightVal;
       return (object *)Result;
     } break;
@@ -462,11 +462,11 @@ object *evalNumberInfixExpression(token_type Op, object_number *Left,
     /* Cast result to the largest type of LeftVal and RightVal */
     Result->Type = max(Left->Type, Right->Type);
     switch (Result->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Result->Int = LeftVal / RightVal;
       return (object *)Result;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Result->Dbl = LeftVal / RightVal;
       return (object *)Result;
     } break;
@@ -481,11 +481,11 @@ object *evalNumberInfixExpression(token_type Op, object_number *Left,
     /* Cast result to the largest type of LeftVal and RightVal */
     Result->Type = max(Left->Type, Right->Type);
     switch (Result->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Result->Int = LeftVal * RightVal;
       return (object *)Result;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Result->Dbl = LeftVal * RightVal;
       return (object *)Result;
     } break;
@@ -596,10 +596,10 @@ bool isTruthy(object *Obj) {
   } break;
   case OBJECT_NUMBER: {
     switch (((object_number *)Obj)->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       return ((object_number *)Obj)->Int != 0;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       return ((object_number *)Obj)->Dbl != 0;
     } break;
     default: {

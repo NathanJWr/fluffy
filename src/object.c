@@ -28,10 +28,10 @@ void PrintObject(object *Obj) {
 
   case OBJECT_NUMBER: {
     switch (((object_number *)Obj)->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       printf("%ld", ((object_number *)Obj)->Int);
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       printf("%lf", ((object_number *)Obj)->Dbl);
     } break;
     default: {
