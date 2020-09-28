@@ -14,6 +14,7 @@
   X(AST_RETURN_STATEMENT)                                                      \
   X(AST_STRING)                                                                \
   X(AST_ARRAY_LITERAL)                                                         \
+  X(AST_INDEX_EXPRESSION)                                                      \
   XX(AST_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -133,3 +134,10 @@ typedef struct {
 
   ast_base **Items; /* stretchy array */
 } ast_array_literal;
+
+typedef struct {
+  ast_base Base;
+
+  ast_identifier *Var;
+  ast_base *Index;
+} ast_index;
