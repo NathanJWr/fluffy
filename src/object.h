@@ -22,7 +22,11 @@ const char *ObjectType[] = {OBJECT_TYPE_LIST};
 #undef XX
 
 typedef struct {
+#ifdef DEBUG_TYPES
+  object_type Type;
+#else
   unsigned char Type;
+#endif
   unsigned char Size;
 } object;
 

@@ -211,6 +211,10 @@ void markAnySubObjects(object_bucket *Bucket) {
       GCMarkAllocation(Arr->Items[i]);
     }
   } break;
+
+  default: {
+    return;
+  }
   }
 }
 
