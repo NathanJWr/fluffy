@@ -78,13 +78,21 @@ typedef struct {
 } object_error;
 
 struct environment;
+typedef struct environment_linked {
+  struct environment *Env;
+
+  struct environment_linked *Next;
+  struct environment_linked *Prev;
+} environment_linked;
+
 typedef struct {
   object Base;
 
   ast_identifier **Parameters;
   ast_block_statement *Body;
   struct environment *Env;
-  struct environment *TailEnv;
+
+  environment_linked *RecurEnvs;
 } object_function;
 
 typedef object *(*BuiltinFunction)(object **Args);
@@ -109,6 +117,6 @@ void PrintObject(object *Obj);
 #define NewFunction()                                                          \
   ((object_function *)NewObject(OBJECT_FUNCTION, sizeof(object_function)))
 
-#define NewString(StrSize)                                                            \
+#define NewString(StrSize)                                                     \
   ((object_string *)NewObject(OBJECT_STRING, sizeof(object_string) + StrSize))
 object *NewStringCopy(const char *Str);
