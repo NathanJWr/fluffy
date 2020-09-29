@@ -9,7 +9,7 @@ typedef struct gc_alloc_info {
 static gc_alloc_info *GCHead = NULL;
 void GCRemoveNode(gc_alloc_info *Node);
 
-void *GCMalloc(unsigned int Size) {
+void *GCMalloc(size_t Size) {
   gc_alloc_info *Info = malloc(sizeof(gc_alloc_info) + Size);
   Info->Next = NULL;
   Info->Prev = NULL;
@@ -83,7 +83,7 @@ void GCSweep(void) {
   }
 }
 
-void GCMarkAndSweep(environment *Env) {
-  EnvironmentMark(Env);
+void GCMarkAndSweep(environment *RootEnv) {
+  EnvironmentMark(RootEnv);
   GCSweep();
 }

@@ -1,6 +1,9 @@
 #ifdef _WIN32
 #define _CRT_SECURE_NO_WARNINGS
 #endif
+
+#define DEBUG_TYPES
+
 /* standard includes */
 #include <stdio.h>
 #include <string.h>

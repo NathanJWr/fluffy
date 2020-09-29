@@ -6,6 +6,12 @@ object *NewObject(object_type Type, unsigned int Size) {
   return Obj;
 }
 
+object *NewStringCopy(const char *Str) {
+  object_string *NewStr = NewString(strlen(Str) + 1);
+  strcpy(NewStr->Value, Str);
+  return (object *)NewStr;
+}
+
 object *NewError(const char *Message, ...) {
   va_list args1, args2;
   unsigned int StringSize;
@@ -28,10 +34,10 @@ void PrintObject(object *Obj) {
 
   case OBJECT_NUMBER: {
     switch (((object_number *)Obj)->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       printf("%ld", ((object_number *)Obj)->Int);
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       printf("%lf", ((object_number *)Obj)->Dbl);
     } break;
     default: {

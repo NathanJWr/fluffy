@@ -1,4 +1,33 @@
 static object_null NullObject;
+static environment BuiltinEnv;
+
+object *builtinPrint(object **Args) {
+  if (ArraySize(Args) == 1) {
+    PrintObject(Args[0]);
+    printf("\n");
+  }
+  return (object *)&NullObject;
+}
+
+object *builtinType(object **Args) {
+  if (ArraySize(Args) == 1) {
+    return NewStringCopy(ObjectType[Args[0]->Type]);
+  }
+  return NewError("invalid number of arguments. expected 1 and received %d",
+                  ArraySize(Args));
+}
+
+static object_builtin BuiltinPrint = {
+    .Base.Type = OBJECT_BUILTIN,
+    .Base.Size = sizeof(object_builtin),
+    .Fn = builtinPrint,
+};
+
+static object_builtin BuiltinType = {
+    .Base.Type = OBJECT_BUILTIN,
+    .Base.Size = sizeof(object_builtin),
+    .Fn = builtinType,
+};
 
 /* TODO: switch statements default to NULL. Implement some kind of error
  * messages */
@@ -26,6 +55,11 @@ char *DuplicateStringWithGC(char *Str);
 void EvalInit(void) {
   NullObject.Base.Type = OBJECT_NULL;
   NullObject.Base.Size = 0;
+
+  /* Create a builtin function table */
+  InitEnv(&BuiltinEnv, 16, malloc);
+  AddToEnv(&BuiltinEnv, "print", (object *)&BuiltinPrint);
+  AddToEnv(&BuiltinEnv, "type", (object *)&BuiltinType);
 }
 
 object *Eval(ast_base *Node, environment *Env) {
@@ -39,10 +73,10 @@ object *Eval(ast_base *Node, environment *Env) {
     object_number *Num = NewNumber();
     Num->Type = ((ast_number *)Node)->Type;
     switch (Num->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Num->Int = ((ast_number *)Node)->Int;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Num->Dbl = ((ast_number *)Node)->Dbl;
     } break;
     default: {
@@ -138,6 +172,10 @@ object *Eval(ast_base *Node, environment *Env) {
     object *Obj = FindInEnv(Env, Ident->Value);
     if (Obj) {
       return Obj;
+    }
+    Obj = FindInEnv(&BuiltinEnv, Ident->Value);
+    if (Obj) {
+      return Obj;
     } else {
       return (object *)&NullObject;
     }
@@ -162,9 +200,61 @@ object *Eval(ast_base *Node, environment *Env) {
       return Exprs[ArraySize(Exprs) - 1];
     }
 
-    RetObject = applyFunction(Fn, Exprs);
+    switch (Fn->Type) {
+    case OBJECT_FUNCTION: {
+      RetObject = applyFunction(Fn, Exprs);
+    } break;
+    case OBJECT_BUILTIN: {
+      object_builtin *Builtin = (object_builtin *)Fn;
+      RetObject = Builtin->Fn(Exprs);
+    } break;
+    default: {
+      break;
+    }
+    }
     ArrayFree(Exprs);
     return RetObject;
+  } break;
+
+  case AST_INDEX_EXPRESSION: {
+    ast_index *IndexExpr = (ast_index *)Node;
+    object *IndexEval = Eval(IndexExpr->Index, Env);
+    object_number *IndexNumber = NULL;
+    object *LookupObject = NULL;
+
+    if (IndexEval->Type == OBJECT_ERROR) {
+      return IndexEval;
+    }
+    /* We really care that the index is actaully a number */
+    if (IndexEval->Type != OBJECT_NUMBER) {
+      return NewError("index is not a number, is %s",
+                      ObjectType[IndexNumber->Type]);
+    }
+    IndexNumber = (object_number *)IndexEval;
+    /* We shouldn't try to index with a double */
+    if (IndexNumber->Type != NUM_INTEGER) {
+      return NewError("index is not and integer");
+    }
+
+    /* Find the object we want to index into */
+    LookupObject = FindInEnv(Env, IndexExpr->Var->Value);
+    switch (LookupObject->Type) {
+    case OBJECT_ARRAY: {
+      object_array *Arr = (object_array *)LookupObject;
+      /* Check the bounds of the array before accessing */
+      if (IndexNumber->Int < 0 || IndexNumber->Int >= ArraySize(Arr->Items)) {
+        return NewError(
+            "attempting to access array elements out of bounds with index %d",
+            IndexNumber->Int);
+      }
+      return *Arr->Items[IndexNumber->Int];
+    } break;
+
+    default: {
+      return NewError("cannot index object of type %s",
+                      ObjectType[LookupObject->Type]);
+    }
+    }
   } break;
 
   default:
@@ -318,10 +408,10 @@ object *evalBangOperatorExpression(object *Obj) {
   case OBJECT_NUMBER: {
     object_boolean *Bool = NewBoolean();
     switch (((object_number *)Obj)->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Bool->Value = !((object_number *)Obj)->Int;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Bool->Value = !((object_number *)Obj)->Dbl;
     } break;
     default: {
@@ -343,10 +433,10 @@ object *evalMinusPrefixOperatorExpression(object *Obj) {
     object_number *Num = NewNumber();
     Num->Type = -((object_number *)Obj)->Type;
     switch (Num->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Num->Int = -((object_number *)Obj)->Int;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Num->Dbl = -((object_number *)Obj)->Dbl;
     } break;
     default: {
@@ -396,10 +486,10 @@ object *evalNumberInfixExpression(token_type Op, object_number *Left,
   /* We will be comparing/matching doubles here */
   double LeftVal, RightVal, Delta, Epsilon = DBL_EPSILON;
   switch (Left->Type) {
-  case num_integer: {
+  case NUM_INTEGER: {
     LeftVal = Left->Int;
   } break;
-  case num_double: {
+  case NUM_DOUBLE: {
     LeftVal = Left->Dbl;
   } break;
   default: {
@@ -407,10 +497,10 @@ object *evalNumberInfixExpression(token_type Op, object_number *Left,
   } break;
   }
   switch (Right->Type) {
-  case num_integer: {
+  case NUM_INTEGER: {
     RightVal = Right->Int;
   } break;
-  case num_double: {
+  case NUM_DOUBLE: {
     RightVal = Right->Dbl;
   } break;
   default:
@@ -424,11 +514,11 @@ object *evalNumberInfixExpression(token_type Op, object_number *Left,
     /* Cast result to the largest type of LeftVal and RightVal */
     Result->Type = max(Left->Type, Right->Type);
     switch (Result->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Result->Int = LeftVal + RightVal;
       return (object *)Result;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Result->Dbl = LeftVal + RightVal;
       return (object *)Result;
     } break;
@@ -443,11 +533,11 @@ object *evalNumberInfixExpression(token_type Op, object_number *Left,
     /* Cast result to the largest type of LeftVal and RightVal */
     Result->Type = max(Left->Type, Right->Type);
     switch (Result->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Result->Int = LeftVal - RightVal;
       return (object *)Result;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Result->Dbl = LeftVal - RightVal;
       return (object *)Result;
     } break;
@@ -462,11 +552,11 @@ object *evalNumberInfixExpression(token_type Op, object_number *Left,
     /* Cast result to the largest type of LeftVal and RightVal */
     Result->Type = max(Left->Type, Right->Type);
     switch (Result->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Result->Int = LeftVal / RightVal;
       return (object *)Result;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Result->Dbl = LeftVal / RightVal;
       return (object *)Result;
     } break;
@@ -481,11 +571,11 @@ object *evalNumberInfixExpression(token_type Op, object_number *Left,
     /* Cast result to the largest type of LeftVal and RightVal */
     Result->Type = max(Left->Type, Right->Type);
     switch (Result->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       Result->Int = LeftVal * RightVal;
       return (object *)Result;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       Result->Dbl = LeftVal * RightVal;
       return (object *)Result;
     } break;
@@ -596,10 +686,10 @@ bool isTruthy(object *Obj) {
   } break;
   case OBJECT_NUMBER: {
     switch (((object_number *)Obj)->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       return ((object_number *)Obj)->Int != 0;
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       return ((object_number *)Obj)->Dbl != 0;
     } break;
     default: {

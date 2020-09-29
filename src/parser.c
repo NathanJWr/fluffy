@@ -9,6 +9,7 @@ enum parser_precedence {
   PRECEDENCE_SUM,
   PRECEDENCE_PRODUCT,
   PRECEDENCE_PREFIX,
+  PRECEDENCE_INDEX,
   PRECEDENCE_CALL
 };
 
@@ -49,6 +50,7 @@ typedef ast_base *(*InfixParseFunction)(parser *, ast_base *left);
 InfixParseFunction findInfixParseFunction(token_type Token);
 ast_base *parseInfixExpression(parser *Parser, ast_base *left);
 ast_base *parseFunctionCallExppression(parser *Parser, ast_base *left);
+ast_base *parseIndexExpression(parser *Parser, ast_base *left);
 
 /* Helper parsing function */
 ast_base *parseBlockStatement(parser *Parser);
@@ -74,6 +76,7 @@ void ParserInit(parser *Parser, lexer *Lexer) {
   PrecedenceTable[TOKEN_SLASH] = PRECEDENCE_PRODUCT;
   PrecedenceTable[TOKEN_ASTERISK] = PRECEDENCE_PRODUCT;
   PrecedenceTable[TOKEN_LPAREN] = PRECEDENCE_CALL;
+  PrecedenceTable[TOKEN_LSQUARE] = PRECEDENCE_INDEX;
 }
 
 ast_program *ParseProgram(parser *Parser) {
@@ -247,6 +250,8 @@ InfixParseFunction findInfixParseFunction(token_type Token) {
     return parseInfixExpression;
   case TOKEN_LPAREN:
     return parseFunctionCallExppression;
+  case TOKEN_LSQUARE:
+    return parseIndexExpression;
   default:
     printf("no infix parse function for (%s) found\n", TokenType[Token]);
     return NULL;
@@ -274,6 +279,28 @@ ast_base *parseInfixExpression(parser *Parser, ast_base *Left) {
 
   memcpy(Node, &Infix, sizeof(ast_infix_expression));
   return Node;
+}
+
+ast_base *parseIndexExpression(parser *Parser, ast_base *Left) {
+  ast_index *IndexExpr = (ast_index *)astBaseNodeCreate(
+      Parser, sizeof(ast_index), AST_INDEX_EXPRESSION);
+
+  nextToken(Parser);
+  if (Left->Type == AST_IDENTIFIER) {
+    IndexExpr->Var = (ast_identifier *)Left;
+  } else {
+    /* TODO: Return error here? */
+    return NULL;
+  }
+
+  IndexExpr->Index = parseExpression(Parser, PRECEDENCE_LOWEST);
+
+  if (Parser->PeekToken != TOKEN_RSQUARE) {
+    return NULL;
+  }
+  nextToken(Parser);
+
+  return (ast_base *)IndexExpr;
 }
 
 /* Function Call Example: foo(a, b, c);
@@ -395,7 +422,7 @@ ast_base *parseIntegerLiteral(parser *Parser) {
   ast_number *Integer =
       (ast_number *)astBaseNodeCreate(Parser, sizeof(ast_number), AST_NUMBER);
 
-  Integer->Type = num_integer;
+  Integer->Type = NUM_INTEGER;
   Integer->Int = Parser->CurInteger;
   return (ast_base *)Integer;
 }
@@ -405,7 +432,7 @@ ast_base *parseDoubleLiteral(parser *Parser) {
   ast_number *Double =
       (ast_number *)astBaseNodeCreate(Parser, sizeof(ast_number), AST_NUMBER);
 
-  Double->Type = num_double;
+  Double->Type = NUM_DOUBLE;
   Double->Dbl = Parser->CurDouble;
   return (ast_base *)Double;
 }
@@ -612,10 +639,10 @@ void debugPrintAstNode(ast_base *Node) {
   } break;
   case AST_NUMBER: {
     switch (((ast_number *)Node)->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       printf("%ld", ((ast_number *)Node)->Int);
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       printf("%lf", ((ast_number *)Node)->Dbl);
     } break;
     default: {

@@ -14,6 +14,7 @@
   X(AST_RETURN_STATEMENT)                                                      \
   X(AST_STRING)                                                                \
   X(AST_ARRAY_LITERAL)                                                         \
+  X(AST_INDEX_EXPRESSION)                                                      \
   XX(AST_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -29,7 +30,12 @@ const char *AstType[] = {AST_TYPE_LIST};
 #undef XX
 
 typedef struct {
+#ifdef DEBUG_TYPES
+  ast_type Type; /* Type of the "actual" ast node */
+#else
   unsigned char Type; /* Type of the "actual" ast node */
+#endif
+
   unsigned char Size; /* Size of the "actual" ast node */
 } ast_base;
 
@@ -44,6 +50,11 @@ typedef struct {
 
   const char *Value;
 } ast_identifier;
+
+typedef enum {
+  NUM_INTEGER,
+  NUM_DOUBLE,
+} num_type;
 
 typedef struct {
   ast_base Base;
@@ -128,3 +139,10 @@ typedef struct {
 
   ast_base **Items; /* stretchy array */
 } ast_array_literal;
+
+typedef struct {
+  ast_base Base;
+
+  ast_identifier *Var;
+  ast_base *Index;
+} ast_index;

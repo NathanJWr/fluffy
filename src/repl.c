@@ -48,7 +48,6 @@ int main() {
 
     Program = ParseProgram(&Parser);
     Obj = Eval((ast_base *)Program, Env);
-    PrintObject(Obj);
     ArrayPush(Programs, (ast_base *)Program);
 
     /* Hacky things to keep pointers from being invalidated */
@@ -57,7 +56,6 @@ int main() {
     StringStore = Lexer.StringStorage;
 
     GCMarkAndSweep(Env);
-    printf("\n");
   }
 
   for (i = 0; i < ArraySize(Programs); i++) {

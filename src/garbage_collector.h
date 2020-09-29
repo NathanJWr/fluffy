@@ -20,8 +20,8 @@
  * anything that wasn't marked
  * */
 
-void *GCMalloc(unsigned int Size);
+void *GCMalloc(size_t Size);
 void *GCRealloc(void *Allocation, unsigned int Size);
 void GCMarkAllocation(void *Allocation);
 bool GCMarked(void *Allocation);
-void GCMarkAndSweep(environment *Env);
+void GCMarkAndSweep(environment *RootEnv);

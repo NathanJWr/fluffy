@@ -7,6 +7,7 @@
   X(OBJECT_RETURN)                                                             \
   X(OBJECT_ERROR)                                                              \
   X(OBJECT_FUNCTION)                                                           \
+  X(OBJECT_BUILTIN)                                                            \
   XX(OJECT_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -22,7 +23,11 @@ const char *ObjectType[] = {OBJECT_TYPE_LIST};
 #undef XX
 
 typedef struct {
+#ifdef DEBUG_TYPES
+  object_type Type;
+#else
   unsigned char Type;
+#endif
   unsigned char Size;
 } object;
 
@@ -81,6 +86,13 @@ typedef struct {
   struct environment *Env;
 } object_function;
 
+typedef object *(*BuiltinFunction)(object **Args);
+typedef struct {
+  object Base;
+
+  BuiltinFunction Fn;
+} object_builtin;
+
 object *NewObject(object_type Type, unsigned int Size);
 object *NewError(const char *Message, ...);
 void PrintObject(object *Obj);
@@ -91,8 +103,11 @@ void PrintObject(object *Obj);
   ((object_number *)NewObject(OBJECT_NUMBER, sizeof(object_number)))
 #define NewBoolean()                                                           \
   ((object_boolean *)NewObject(OBJECT_BOOLEAN, sizeof(object_boolean)))
-#define NewNull() ((object_null *)NewObject(OBJECT_NULL, sizeof(object_null)))
 #define NewReturn()                                                            \
   ((object_return *)NewObject(OBJECT_RETURN, sizeof(object_return)))
 #define NewFunction()                                                          \
   ((object_function *)NewObject(OBJECT_FUNCTION, sizeof(object_function)))
+
+#define NewString(StrSize)                                                            \
+  ((object_string *)NewObject(OBJECT_STRING, sizeof(object_string) + StrSize))
+object *NewStringCopy(const char *Str);
