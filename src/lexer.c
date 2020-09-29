@@ -1,13 +1,13 @@
 void skipWhitespace(lexer *l);
 void readChar(lexer *l);
-token_type readIdentifier(lexer *Lexer);
-token_type readNumber(lexer *Lexer);
+fluff_token_type readIdentifier(lexer *Lexer);
+fluff_token_type readNumber(lexer *Lexer);
 char peekChar(lexer *l);
-token_type lookupTokenType(char *ident);
+fluff_token_type lookupFluffTokenType(char *ident);
 void readString(lexer *Lexer);
 
-token_type NextToken(lexer *Lexer) {
-  token_type Token;
+fluff_token_type NextToken(lexer *Lexer) {
+  fluff_token_type Token;
   char c;
 
   if (Lexer->ParseLocation == Lexer->EndLocation) {
@@ -148,8 +148,8 @@ void readString(lexer *Lexer) {
   Lexer->String = String;
 }
 
-token_type readIdentifier(lexer *Lexer) {
-  token_type Token;
+fluff_token_type readIdentifier(lexer *Lexer) {
+  fluff_token_type Token;
 
   /* construct a string in the string storage memory */
   char *String = Lexer->StringStorage;
@@ -161,7 +161,7 @@ token_type readIdentifier(lexer *Lexer) {
   Lexer->ParseLocation--;
   *StringEnd++ = '\0';
 
-  Token = lookupTokenType(String);
+  Token = lookupFluffTokenType(String);
   if (Token == TOKEN_IDENT) {
     /* actually keep the string around in memory */
     Lexer->String = String;
@@ -174,7 +174,7 @@ token_type readIdentifier(lexer *Lexer) {
   return Token;
 }
 
-token_type lookupTokenType(char *ident) {
+fluff_token_type lookupFluffTokenType(char *ident) {
   if (0 == strcmp(ident, "var")) {
     return TOKEN_VAR;
   } else if (0 == strcmp(ident, "fn")) {
@@ -194,7 +194,7 @@ token_type lookupTokenType(char *ident) {
   }
 }
 
-token_type readNumber(lexer *Lexer) {
+fluff_token_type readNumber(lexer *Lexer) {
   /* construct an integer in the string storage memory */
   char *Num = Lexer->StringStorage;
   char *NumEnd = Lexer->StringStorage;

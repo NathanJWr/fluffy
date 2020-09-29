@@ -20,4 +20,4 @@ typedef struct {
 
 void LexerInit(lexer *Lexer, const char *Input, const char *InputEndLocation,
                char *StringStore, unsigned int StringStoreSize);
-token_type NextToken(lexer *l);
+fluff_token_type NextToken(lexer *l);

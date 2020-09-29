@@ -51,4 +51,9 @@
 #include "src/object.c"
 #include "src/environment.c"
 #include "src/evaluate.c"
+
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include "src/main.c"

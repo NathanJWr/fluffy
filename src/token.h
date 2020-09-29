@@ -1,4 +1,4 @@
-#define TOKEN_TYPE_LIST                                                        \
+#define FLUFF_fluff_token_type_LIST                                                        \
   X(ILLEGAL)                                                                   \
   X(END)                                                                       \
                                                                                \
@@ -45,12 +45,12 @@
 
 #define X(name) TOKEN_##name,
 #define XX(name) TOKEN_##name
-typedef enum { TOKEN_TYPE_LIST } token_type;
+typedef enum { FLUFF_fluff_token_type_LIST } fluff_token_type;
 #undef X
 #undef XX
 
 #define X(name) #name,
 #define XX(name) #name
-const char *TokenType[] = {TOKEN_TYPE_LIST};
+const char *FluffTokenType[] = {FLUFF_fluff_token_type_LIST};
 #undef X
 #undef XX
