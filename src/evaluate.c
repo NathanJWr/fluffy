@@ -1,5 +1,10 @@
-static object_null NullObject;
+static object_null NullObject = {
+    .Base.Type = OBJECT_NULL,
+    .Base.Size = 0,
+};
+
 static environment BuiltinEnv;
+static environment *RootEnv;
 
 object *builtinPrint(object **Args) {
   if (ArraySize(Args) == 1) {
@@ -52,14 +57,14 @@ environment *extendFnEnv(object_function *Fn, object **Args,
 object *unwrapReturnValue(object *Obj);
 char *DuplicateStringWithGC(char *Str);
 
-void EvalInit(void) {
-  NullObject.Base.Type = OBJECT_NULL;
-  NullObject.Base.Size = 0;
-
+void EvalInit(environment *Root) {
   /* Create a builtin function table */
   InitEnv(&BuiltinEnv, 16, malloc);
   AddToEnv(&BuiltinEnv, "print", (object *)&BuiltinPrint);
   AddToEnv(&BuiltinEnv, "type", (object *)&BuiltinType);
+
+  /* Remember the root env */
+  RootEnv = Root;
 }
 
 object *Eval(ast_base *Node, environment *Env) {
@@ -304,6 +309,7 @@ environment *extendFnEnv(object_function *Fn, object **Args,
     AddToEnv(Env, Var, Obj);
   }
 
+  Fn->TailEnv = Env;
   return Env;
 }
 
@@ -356,6 +362,9 @@ object *evalProgram(ast_program *Program, environment *Env) {
   for (i = 0; i < StatementsSize; i++) {
     Result = Eval(Statements[i], Env);
 
+    if (GCNeedsCleanup()) {
+      GCMarkAndSweep(RootEnv);
+    }
     if (Result->Type == OBJECT_RETURN) {
       return ((object_return *)Result)->Retval;
     }
@@ -373,6 +382,9 @@ object *evalBlock(ast_block_statement *Block, environment *Env) {
   for (i = 0; i < StatementsSize; i++) {
     Result = Eval(Statements[i], Env);
 
+    if (GCNeedsCleanup()) {
+      GCMarkAndSweep(RootEnv);
+    }
     if (Result->Type == OBJECT_RETURN) {
       return Result;
     }

@@ -7,7 +7,10 @@ typedef struct gc_alloc_info {
 } gc_alloc_info;
 
 static gc_alloc_info *GCHead = NULL;
+static size_t AllocationsSinceSweep = 0;
 void GCRemoveNode(gc_alloc_info *Node);
+
+bool GCNeedsCleanup() { return (AllocationsSinceSweep > 50); }
 
 void *GCMalloc(size_t Size) {
   gc_alloc_info *Info = malloc(sizeof(gc_alloc_info) + Size);
@@ -21,6 +24,7 @@ void *GCMalloc(size_t Size) {
     GCHead->Prev = Info;
   }
   GCHead = Info;
+  AllocationsSinceSweep++;
 
   return Info + 1;
 }
@@ -83,7 +87,20 @@ void GCSweep(void) {
   }
 }
 
+size_t debugGetGCAllocationSize() {
+  gc_alloc_info *Head = GCHead;
+  size_t Size = 0;
+  while (Head) {
+    Size += Head->Size;
+    Head = Head->Next;
+  }
+  return Size;
+}
+
 void GCMarkAndSweep(environment *RootEnv) {
+  AllocationsSinceSweep = 0;
+  printf("GC Allocated: %ld bytes\n", debugGetGCAllocationSize());
   EnvironmentMark(RootEnv);
   GCSweep();
+  printf("GC Allocated After Sweep: %ld bytes\n", debugGetGCAllocationSize());
 }

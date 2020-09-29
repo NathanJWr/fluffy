@@ -84,6 +84,7 @@ typedef struct {
   ast_identifier **Parameters;
   ast_block_statement *Body;
   struct environment *Env;
+  struct environment *TailEnv;
 } object_function;
 
 typedef object *(*BuiltinFunction)(object **Args);

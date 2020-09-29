@@ -25,3 +25,4 @@ void *GCRealloc(void *Allocation, unsigned int Size);
 void GCMarkAllocation(void *Allocation);
 bool GCMarked(void *Allocation);
 void GCMarkAndSweep(environment *RootEnv);
+bool GCNeedsCleanup();
