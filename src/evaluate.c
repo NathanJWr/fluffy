@@ -192,12 +192,14 @@ object *Eval(ast_base *Node, environment *Env) {
     FnObj->Parameters = (ast_identifier **)Fn->Parameters;
     FnObj->Body = (ast_block_statement *)Fn->Body;
     FnObj->Env = Env;
+    FnObj->RecurEnvs = NULL;
     return (object *)FnObj;
   } break;
 
   case AST_FUNCTION_CALL: {
     ast_function_call *Call = (ast_function_call *)Node;
     object *Fn = Eval(Call->FunctionName, Env);
+
     object **Exprs = evalExpressions(Call->Arguments, Env);
     object *RetObject = NULL;
 
@@ -291,8 +293,34 @@ object *applyFunction(object *Fn, object **Args) {
   }
 
   ExtendedEnv = extendFnEnv(Function, Args, ArgsLength);
+  /* Save the new environment by inserting ExtendedEnv into a linked list */
+  /* NOTE: This is to make the extended environment "accessible" if the
+   * garbage collector were to run in the middle of the function's execution
+   */
+  environment_linked *StoredExtendedEnv = GCMalloc(sizeof(environment_linked));
+  StoredExtendedEnv->Env = ExtendedEnv;
+  StoredExtendedEnv->Next = NULL;
+  StoredExtendedEnv->Prev = NULL;
+  if (Function->RecurEnvs) {
+    StoredExtendedEnv->Next = Function->RecurEnvs;
+    Function->RecurEnvs->Prev = StoredExtendedEnv;
+  }
+  Function->RecurEnvs = StoredExtendedEnv;
+
+  /* Evaluate the function */
   EvaluatedObject = Eval((ast_base *)Function->Body, ExtendedEnv);
   EvaluatedObject = unwrapReturnValue(EvaluatedObject);
+
+  /* Remove the Extended Environmenet from the linked list */
+  if (StoredExtendedEnv == Function->RecurEnvs) {
+    Function->RecurEnvs = StoredExtendedEnv->Next;
+  }
+  if (StoredExtendedEnv->Next != NULL) {
+    StoredExtendedEnv->Next->Prev = StoredExtendedEnv->Prev;
+  }
+  if (StoredExtendedEnv->Prev != NULL) {
+    StoredExtendedEnv->Prev->Next = StoredExtendedEnv->Next;
+  }
 
   return EvaluatedObject;
 }
@@ -309,7 +337,6 @@ environment *extendFnEnv(object_function *Fn, object **Args,
     AddToEnv(Env, Var, Obj);
   }
 
-  Fn->TailEnv = Env;
   return Env;
 }
 

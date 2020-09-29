@@ -200,10 +200,13 @@ void markAnySubObjects(object_bucket *Bucket) {
     if (!GCMarked(Func->Env)) {
       EnvironmentMark(Func->Env);
     }
-    environment *TailEnv = Func->TailEnv;
-    while (TailEnv != Func->Env && TailEnv != NULL) {
-      EnvironmentMark(TailEnv);
-      TailEnv = TailEnv->Outer;
+
+    environment_linked *Env = Func->RecurEnvs;
+    while (Env) {
+      GCMarkAllocation(Env);
+      EnvironmentMark(Env->Env);
+
+      Env = Env->Next;
     }
   } break;
 

@@ -4,6 +4,8 @@ var recur = fn(x) {
     if (x > 0) {
        recur(x - 1);
     } 
+    print(y);
 }
 
 recur(100);
+
