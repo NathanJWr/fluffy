@@ -68,7 +68,7 @@ void rehashEnv(environment *OldEnv, environment *NewEnv) {
 
 void rehashAndResize(environment *Env) {
   environment NewEnv;
-  InitEnv(&NewEnv, Env->ObjectsLength * 2);
+  InitEnv(&NewEnv, Env->ObjectsLength * 2, Env->Malloc);
   rehashEnv(Env, &NewEnv);
 
   free(Env->Objects);
@@ -84,13 +84,14 @@ void possiblRehashAndResize(environment *Env) {
   }
 }
 
-void InitEnv(environment *Env, unsigned int Size) {
+void InitEnv(environment *Env, unsigned int Size, mallocFunc MallocFunc) {
   /* Note: Using power of two array sizes for faster modulus */
   unsigned int AllocSize = sizeof(object_bucket) * Size;
   Env->ObjectsLength = Size;
   Env->ObjectsExist = 0;
 
-  Env->Objects = GCMalloc(AllocSize);
+  Env->Objects = MallocFunc(AllocSize);
+  Env->Malloc = MallocFunc;
   memset(Env->Objects, 0, AllocSize);
 
   Env->Outer = NULL;
@@ -165,7 +166,7 @@ environment *CreateEnclosedEnvironment(environment *Outer) {
 
 environment *CreateEnvironment(void) {
   environment *Env = GCMalloc(sizeof(environment));
-  InitEnv(Env, 4);
+  InitEnv(Env, 4, GCMalloc);
   return Env;
 }
 

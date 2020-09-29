@@ -6,6 +6,12 @@ object *NewObject(object_type Type, unsigned int Size) {
   return Obj;
 }
 
+object *NewStringCopy(const char *Str) {
+  object_string *NewStr = NewString(strlen(Str) + 1);
+  strcpy(NewStr->Value, Str);
+  return (object *)NewStr;
+}
+
 object *NewError(const char *Message, ...) {
   va_list args1, args2;
   unsigned int StringSize;

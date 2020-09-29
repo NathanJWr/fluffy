@@ -1,4 +1,33 @@
 static object_null NullObject;
+static environment BuiltinEnv;
+
+object *builtinPrint(object **Args) {
+  if (ArraySize(Args) == 1) {
+    PrintObject(Args[0]);
+    printf("\n");
+  }
+  return (object *)&NullObject;
+}
+
+object *builtinType(object **Args) {
+  if (ArraySize(Args) == 1) {
+    return NewStringCopy(ObjectType[Args[0]->Type]);
+  }
+  return NewError("invalid number of arguments. expected 1 and received %d",
+                  ArraySize(Args));
+}
+
+static object_builtin BuiltinPrint = {
+    .Base.Type = OBJECT_BUILTIN,
+    .Base.Size = sizeof(object_builtin),
+    .Fn = builtinPrint,
+};
+
+static object_builtin BuiltinType = {
+    .Base.Type = OBJECT_BUILTIN,
+    .Base.Size = sizeof(object_builtin),
+    .Fn = builtinType,
+};
 
 /* TODO: switch statements default to NULL. Implement some kind of error
  * messages */
@@ -26,6 +55,11 @@ char *DuplicateStringWithGC(char *Str);
 void EvalInit(void) {
   NullObject.Base.Type = OBJECT_NULL;
   NullObject.Base.Size = 0;
+
+  /* Create a builtin function table */
+  InitEnv(&BuiltinEnv, 16, malloc);
+  AddToEnv(&BuiltinEnv, "print", (object *)&BuiltinPrint);
+  AddToEnv(&BuiltinEnv, "type", (object *)&BuiltinType);
 }
 
 object *Eval(ast_base *Node, environment *Env) {
@@ -138,6 +172,10 @@ object *Eval(ast_base *Node, environment *Env) {
     object *Obj = FindInEnv(Env, Ident->Value);
     if (Obj) {
       return Obj;
+    }
+    Obj = FindInEnv(&BuiltinEnv, Ident->Value);
+    if (Obj) {
+      return Obj;
     } else {
       return (object *)&NullObject;
     }
@@ -162,7 +200,18 @@ object *Eval(ast_base *Node, environment *Env) {
       return Exprs[ArraySize(Exprs) - 1];
     }
 
-    RetObject = applyFunction(Fn, Exprs);
+    switch (Fn->Type) {
+    case OBJECT_FUNCTION: {
+      RetObject = applyFunction(Fn, Exprs);
+    } break;
+    case OBJECT_BUILTIN: {
+      object_builtin *Builtin = (object_builtin *)Fn;
+      RetObject = Builtin->Fn(Exprs);
+    } break;
+    default: {
+      break;
+    }
+    }
     ArrayFree(Exprs);
     return RetObject;
   } break;
