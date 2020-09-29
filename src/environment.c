@@ -191,11 +191,11 @@ void markAnySubObjects(object_bucket *Bucket) {
   object *Obj = Bucket->Obj;
   switch (Obj->Type) {
 
-  case OBJECT_RETURN: {
+  case FLUFF_OBJECT_RETURN: {
     GCMarkAllocation(((object_return *)Obj)->Retval);
   } break;
 
-  case OBJECT_FUNCTION: {
+  case FLUFF_OBJECT_FUNCTION: {
     object_function *Func = (object_function *)Obj;
     if (!GCMarked(Func->Env)) {
       EnvironmentMark(Func->Env);
@@ -210,7 +210,7 @@ void markAnySubObjects(object_bucket *Bucket) {
     }
   } break;
 
-  case OBJECT_ARRAY: {
+  case FLUFF_OBJECT_ARRAY: {
     object_array *Arr = (object_array *)Obj;
     unsigned int i;
     unsigned int ArrLength = ArraySize(Arr->Items);

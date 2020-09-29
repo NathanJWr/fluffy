@@ -14,7 +14,7 @@ enum parser_precedence {
 };
 
 static unsigned int PrecedenceTable[TOKEN_ENUM_COUNT];
-unsigned int getPrecedence(token_type Token);
+unsigned int getPrecedence(fluff_token_type Token);
 
 /* allocating functions */
 /* TODO(Nathan): Possible optimization -> pre-allocate larger chunks of memory
@@ -33,7 +33,7 @@ ast_base *parseRetStatement(parser *Parser);
 
 /* Prefix expression parsing function */
 typedef ast_base *(*PrefixParseFunction)(parser *);
-PrefixParseFunction findPrefixParseFunction(token_type Token);
+PrefixParseFunction findPrefixParseFunction(fluff_token_type Token);
 ast_base *parsePrefixExpression(parser *Parser);
 ast_base *parseIdentifier(parser *Parser);
 ast_base *parseString(parser *Parser);
@@ -47,7 +47,7 @@ ast_base *parseFunctionLiteral(parser *Parser);
 
 /* Infix expression parsing function */
 typedef ast_base *(*InfixParseFunction)(parser *, ast_base *left);
-InfixParseFunction findInfixParseFunction(token_type Token);
+InfixParseFunction findInfixParseFunction(fluff_token_type Token);
 ast_base *parseInfixExpression(parser *Parser, ast_base *left);
 ast_base *parseFunctionCallExppression(parser *Parser, ast_base *left);
 ast_base *parseIndexExpression(parser *Parser, ast_base *left);
@@ -205,7 +205,7 @@ void nextToken(parser *Parser) {
 
 /* will return a prefix parsing function depending on a token type
  * Note: Not all tokens will have a function associated with them */
-PrefixParseFunction findPrefixParseFunction(token_type Token) {
+PrefixParseFunction findPrefixParseFunction(fluff_token_type Token) {
   switch (Token) {
   case TOKEN_IDENT:
     return parseIdentifier;
@@ -230,14 +230,14 @@ PrefixParseFunction findPrefixParseFunction(token_type Token) {
   case TOKEN_LSQUARE:
     return parseArray;
   default:
-    printf("no prefix parse function for (%s) found\n", TokenType[Token]);
+    printf("no prefix parse function for (%s) found\n", FluffTokenType[Token]);
     return NULL;
   }
 }
 
 /* will return a infix parsing function depending on a token type
  * Note: Not all tokens will have a function associated with them */
-InfixParseFunction findInfixParseFunction(token_type Token) {
+InfixParseFunction findInfixParseFunction(fluff_token_type Token) {
   switch (Token) {
   case TOKEN_PLUS:
   case TOKEN_MINUS:
@@ -253,7 +253,7 @@ InfixParseFunction findInfixParseFunction(token_type Token) {
   case TOKEN_LSQUARE:
     return parseIndexExpression;
   default:
-    printf("no infix parse function for (%s) found\n", TokenType[Token]);
+    printf("no infix parse function for (%s) found\n", FluffTokenType[Token]);
     return NULL;
   }
 }

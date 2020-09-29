@@ -75,7 +75,7 @@ typedef struct {
 typedef struct {
   ast_base Base;
 
-  token_type Operation;
+  fluff_token_type Operation;
   ast_base *Right;
 } ast_prefix_expression;
 
@@ -103,7 +103,7 @@ typedef struct {
 typedef struct {
   ast_base Base;
 
-  token_type Operation;
+  fluff_token_type Operation;
   ast_base *Left;
   ast_base *Right;
 } ast_infix_expression;
