@@ -99,8 +99,8 @@ size_t debugGetGCAllocationSize() {
 
 void GCMarkAndSweep(environment *RootEnv) {
   AllocationsSinceSweep = 0;
-  printf("GC Allocated: %ld bytes\n", debugGetGCAllocationSize());
+  printf("GC Allocated: %zu bytes\n", debugGetGCAllocationSize());
   EnvironmentMark(RootEnv);
   GCSweep();
-  printf("GC Allocated After Sweep: %ld bytes\n", debugGetGCAllocationSize());
+  printf("GC Allocated After Sweep: %zu bytes\n", debugGetGCAllocationSize());
 }

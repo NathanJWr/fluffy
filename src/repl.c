@@ -29,7 +29,7 @@ int main() {
   StringStore = calloc(1, StringStoreSize);
   ReadBuffer = calloc(1, ReadBufferSize);
   StringStoreBegin = StringStore;
-  EvalInit();
+  EvalInit(Env);
 
   while (1) {
     ast_program *Program;
@@ -48,6 +48,10 @@ int main() {
 
     Program = ParseProgram(&Parser);
     Obj = Eval((ast_base *)Program, Env);
+    if (Obj->Type == FLUFF_OBJECT_ERROR) {
+      PrintObject(Obj);
+      printf("\n");
+    }
     ArrayPush(Programs, (ast_base *)Program);
 
     /* Hacky things to keep pointers from being invalidated */

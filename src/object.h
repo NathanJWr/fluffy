@@ -1,13 +1,13 @@
-#define FLUFF_OBJECT_TYPE_LIST                                                       \
-  X(FLUFF_OBJECT_NUMBER)                                                             \
-  X(FLUFF_OBJECT_BOOLEAN)                                                            \
-  X(FLUFF_OBJECT_STRING)                                                             \
-  X(FLUFF_OBJECT_ARRAY)                                                              \
-  X(FLUFF_OBJECT_NULL)                                                               \
-  X(FLUFF_OBJECT_RETURN)                                                             \
-  X(FLUFF_OBJECT_ERROR)                                                              \
-  X(FLUFF_OBJECT_FUNCTION)                                                           \
-  X(FLUFF_OBJECT_BUILTIN)                                                            \
+#define FLUFF_OBJECT_TYPE_LIST                                                 \
+  X(FLUFF_OBJECT_NUMBER)                                                       \
+  X(FLUFF_OBJECT_BOOLEAN)                                                      \
+  X(FLUFF_OBJECT_STRING)                                                       \
+  X(FLUFF_OBJECT_ARRAY)                                                        \
+  X(FLUFF_OBJECT_NULL)                                                         \
+  X(FLUFF_OBJECT_RETURN)                                                       \
+  X(FLUFF_OBJECT_ERROR)                                                        \
+  X(FLUFF_OBJECT_FUNCTION)                                                     \
+  X(FLUFF_OBJECT_BUILTIN)                                                      \
   XX(OJECT_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -22,14 +22,25 @@ const char *FluffObjectType[] = {FLUFF_OBJECT_TYPE_LIST};
 #undef X
 #undef XX
 
+/* Typedefs and pre-declarations */
+struct object;
+typedef struct object object;
+typedef object *(*object_method)(object *This, object **Args);
+
 typedef struct {
+  object_method MethodLength;
+} fluff_object_function_table;
+
+struct object {
 #ifdef DEBUG_TYPES
   object_type Type;
 #else
   unsigned char Type;
 #endif
+
   unsigned char Size;
-} object;
+  fluff_object_function_table *SupportedFunctions;
+};
 
 typedef struct {
   object Base;
@@ -118,5 +129,6 @@ void PrintObject(object *Obj);
   ((object_function *)NewObject(FLUFF_OBJECT_FUNCTION, sizeof(object_function)))
 
 #define NewString(StrSize)                                                     \
-  ((object_string *)NewObject(FLUFF_OBJECT_STRING, sizeof(object_string) + StrSize))
+  ((object_string *)NewObject(FLUFF_OBJECT_STRING,                             \
+                              sizeof(object_string) + StrSize))
 object *NewStringCopy(const char *Str);

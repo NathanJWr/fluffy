@@ -1,8 +1,32 @@
+/* Set up the function tables for each object type */
+object *FluffMethodStringLength(object *This, object **Args) {
+  if (ArraySize(Args) > 0) {
+    return NewError("expected 0 arguments, got %d", ArraySize(Args));
+  }
+  object_string *Str = (object_string *)This;
+  object_number *Length = NewNumber();
+  Length->Type = NUM_INTEGER;
+  Length->Int = strlen(Str->Value);
+  return (object *)Length;
+}
+
+static fluff_object_function_table FluffStringFunctionTable = {
+    .MethodLength = FluffMethodStringLength,
+};
+
 object *NewObject(object_type Type, unsigned int Size) {
   object *Obj = GCMalloc(Size);
   Obj->Type = Type;
   Obj->Size = Size;
 
+  switch (Type) {
+  case FLUFF_OBJECT_STRING: {
+    Obj->SupportedFunctions = &FluffStringFunctionTable;
+  } break;
+  default: {
+    Obj->SupportedFunctions = NULL;
+  }
+  }
   return Obj;
 }
 
