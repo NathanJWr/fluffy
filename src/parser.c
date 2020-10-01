@@ -9,7 +9,7 @@ enum parser_precedence {
   PRECEDENCE_SUM,
   PRECEDENCE_PRODUCT,
   PRECEDENCE_PREFIX,
-  PRECEDENCE_INDEX,
+  PRECEDENCE_INDEX_OR_DOT,
   PRECEDENCE_CALL
 };
 
@@ -76,7 +76,9 @@ void ParserInit(parser *Parser, lexer *Lexer) {
   PrecedenceTable[TOKEN_SLASH] = PRECEDENCE_PRODUCT;
   PrecedenceTable[TOKEN_ASTERISK] = PRECEDENCE_PRODUCT;
   PrecedenceTable[TOKEN_LPAREN] = PRECEDENCE_CALL;
-  PrecedenceTable[TOKEN_LSQUARE] = PRECEDENCE_INDEX;
+  PrecedenceTable[TOKEN_LSQUARE] = PRECEDENCE_INDEX_OR_DOT;
+  PrecedenceTable[TOKEN_ASSIGN] = PRECEDENCE_EQUALS;
+  PrecedenceTable[TOKEN_DOT] = PRECEDENCE_INDEX_OR_DOT;
 }
 
 ast_program *ParseProgram(parser *Parser) {
@@ -247,6 +249,8 @@ InfixParseFunction findInfixParseFunction(fluff_token_type Token) {
   case TOKEN_NOT_EQ:
   case TOKEN_LT:
   case TOKEN_GT:
+  case TOKEN_ASSIGN:
+  case TOKEN_DOT:
     return parseInfixExpression;
   case TOKEN_LPAREN:
     return parseFunctionCallExppression;

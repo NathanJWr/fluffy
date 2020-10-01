@@ -44,6 +44,9 @@ object *evalPrefixExpression(fluff_token_type Op, object *Obj);
 object *evalBangOperatorExpression(object *Ojb);
 object *evalMinusPrefixOperatorExpression(object *Obj);
 object *evalInfixExpression(fluff_token_type Op, object *Left, object *Right);
+object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env);
+object *evalInfixAssignExpression(ast_base *Left, ast_base *Right,
+                                  environment *Env);
 object *evalNumberInfixExpression(fluff_token_type Op, object_number *Left,
                                   object_number *Right);
 object *evalStringInfixExpression(fluff_token_type Op, object_string *Left,
@@ -124,6 +127,13 @@ object *Eval(ast_base *Node, environment *Env) {
 
   case AST_INFIX_EXPRESSION: {
     ast_infix_expression *Infix = (ast_infix_expression *)Node;
+    if (Infix->Left->Type == AST_IDENTIFIER &&
+        Infix->Operation == TOKEN_ASSIGN) {
+      return evalInfixAssignExpression(Infix->Left, Infix->Right, Env);
+    } else if (Infix->Operation == TOKEN_DOT) {
+      return evalDotOperator(Infix->Left, Infix->Right, Env);
+    }
+
     object *Left = Eval(Infix->Left, Env);
     object *Right = Eval(Infix->Right, Env);
     if (Left->Type == FLUFF_OBJECT_ERROR) {
@@ -168,7 +178,11 @@ object *Eval(ast_base *Node, environment *Env) {
       return Val;
     }
 
-    AddToEnv(Env, (char *)Stmt->Name->Value, Val);
+    if (!FindInEnv(Env, (char *)Stmt->Name->Value)) {
+      AddToEnv(Env, (char *)Stmt->Name->Value, Val);
+    } else {
+      return NewError("variable %s already exists!", Stmt->Name->Value);
+    }
     return (object *)&NullObject;
   } break;
 
@@ -511,12 +525,64 @@ object *evalInfixExpression(fluff_token_type Op, object *Left, object *Right) {
     }
 
     default: {
-      return NewError("unsupported type %s in infix expression", FluffTokenType[Op]);
+      return NewError("unsupported type %s in infix expression",
+                      FluffTokenType[Op]);
     }
     }
   } else {
     return NewError("type mismatch: %s, %s", FluffObjectType[Left->Type],
                     FluffObjectType[Right->Type]);
+  }
+}
+
+object *evalInfixAssignExpression(ast_base *Left, ast_base *Right,
+                                  environment *Env) {
+  object *RightObj = Eval(Right, Env);
+  if (Left->Type == AST_IDENTIFIER) {
+    const char *Var = ((ast_identifier *)Left)->Value;
+    if (FindInEnv(Env, Var)) {
+      AddToEnv(Env, Var, RightObj);
+    } else {
+      return NewError("variable %s does not exist yet!", Var);
+    }
+  }
+  return (object *)&NullObject;
+}
+
+object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env) {
+  if (Right->Type == AST_FUNCTION_CALL) {
+    /* This is only slightly different than the normal handling of
+     * AST_FUNCTION_CALL This is because we need to insert the implicit This
+     * pointer to the calling object as well as lookup the functions in a
+     * different way, since the function pointer's for
+     * each object's methods are located within the SupportedFunctions inside
+     * the root object structure */
+    ast_function_call *Method = (ast_function_call *)Right;
+    object *LeftEval = Eval(Left, Env);
+    object *RetObject = NULL;
+    object **Exprs = evalExpressions(Method->Arguments, Env);
+
+    if (ArraySize(Exprs) > 0 &&
+        Exprs[ArraySize(Exprs) - 1]->Type == FLUFF_OBJECT_ERROR) {
+      return Exprs[ArraySize(Exprs) - 1];
+    }
+
+    /* TODO: Better lookup strategy */
+    if (0 ==
+        strcmp(((ast_identifier *)Method->FunctionName)->Value, "length")) {
+      if (!LeftEval->SupportedFunctions->MethodLength) {
+        return NewError("unsupported method for object of type %s",
+                        FluffObjectType[LeftEval->Type]);
+      }
+      RetObject = LeftEval->SupportedFunctions->MethodLength(LeftEval, Exprs);
+    } else {
+      RetObject = NewError("method not found");
+    }
+
+    ArrayFree(Exprs);
+    return RetObject;
+  } else {
+    return NewError("expected function call after dot operator");
   }
 }
 
@@ -649,8 +715,9 @@ object *evalNumberInfixExpression(fluff_token_type Op, object_number *Left,
   } break;
 
   default: {
-    return NewError("unknown operator: %s %s %s", FluffObjectType[Left->Base.Type],
-                    FluffTokenType[Op], FluffObjectType[Right->Base.Type]);
+    return NewError("unknown operator: %s %s %s",
+                    FluffObjectType[Left->Base.Type], FluffTokenType[Op],
+                    FluffObjectType[Right->Base.Type]);
   }
   }
 }
@@ -664,8 +731,8 @@ object *evalStringInfixExpression(fluff_token_type Op, object_string *Left,
     unsigned int RightSize = strlen(Right->Value);
     unsigned int Size = LeftSize + RightSize + 1;
 
-    object_string *StrObj =
-        (object_string *)NewObject(FLUFF_OBJECT_STRING, sizeof(object_string) + Size);
+    object_string *StrObj = (object_string *)NewObject(
+        FLUFF_OBJECT_STRING, sizeof(object_string) + Size);
     memcpy(StrObj->Value, Left->Value, LeftSize);
     memcpy(StrObj->Value + LeftSize, Right->Value, RightSize);
     StrObj->Value[Size - 1] = '\0';
@@ -673,22 +740,23 @@ object *evalStringInfixExpression(fluff_token_type Op, object_string *Left,
   } break;
 
   case TOKEN_EQ: {
-    object_boolean *Eq =
-        (object_boolean *)NewObject(FLUFF_OBJECT_BOOLEAN, sizeof(object_boolean));
+    object_boolean *Eq = (object_boolean *)NewObject(FLUFF_OBJECT_BOOLEAN,
+                                                     sizeof(object_boolean));
     Eq->Value = (0 == strcmp(Left->Value, Right->Value));
     return (object *)Eq;
   } break;
 
   case TOKEN_NOT_EQ: {
-    object_boolean *Eq =
-        (object_boolean *)NewObject(FLUFF_OBJECT_BOOLEAN, sizeof(object_boolean));
+    object_boolean *Eq = (object_boolean *)NewObject(FLUFF_OBJECT_BOOLEAN,
+                                                     sizeof(object_boolean));
     Eq->Value = !(0 == strcmp(Left->Value, Right->Value));
     return (object *)Eq;
   } break;
 
   default: {
-    return NewError("unknown operator: %s %s %s", FluffObjectType[Left->Base.Type],
-                    FluffTokenType[Op], FluffObjectType[Right->Base.Type]);
+    return NewError("unknown operator: %s %s %s",
+                    FluffObjectType[Left->Base.Type], FluffTokenType[Op],
+                    FluffObjectType[Right->Base.Type]);
   } break;
   }
 }
