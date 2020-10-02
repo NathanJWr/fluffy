@@ -130,6 +130,7 @@ void AstArrayLiteralDelete(ast_array_literal *Arr) {
     AstNodeDelete(Arr->Items[i]);
   }
   ArrayFree(Arr->Items);
+  free(Arr);
 }
 
 void AstIndexExpressionDelete(ast_index *Index) {
