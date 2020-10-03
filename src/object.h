@@ -118,6 +118,12 @@ object *NewObject(object_type Type, unsigned int Size);
 object *NewError(const char *Message, ...);
 void PrintObject(object *Obj);
 
+#define STATIC_BUILTIN_FUNCTION_VARIABLE(Name, Function)                       \
+  static object_builtin Name = {                                               \
+      .Base.Type = FLUFF_OBJECT_BUILTIN,                                       \
+      .Base.Size = sizeof(object_builtin),                                     \
+      .Fn = Function,                                                          \
+  }
 /* Constructors for other objects */
 
 #define NewNumber()                                                            \
