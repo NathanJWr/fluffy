@@ -1,3 +1,6 @@
+struct object;
+typedef struct object object;
+
 typedef struct {
   const char *Str;
   size_t Hash;

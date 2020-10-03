@@ -20,6 +20,9 @@
  * anything that wasn't marked
  * */
 
+struct environment;
+typedef struct environment environment;
+
 void *GCMalloc(size_t Size);
 void *GCRealloc(void *Allocation, unsigned int Size);
 void GCMarkAllocation(void *Allocation);

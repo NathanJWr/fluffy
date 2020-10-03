@@ -1,4 +1,4 @@
-typedef struct {
+typedef struct lexer {
   /* lexer internal variables */
   const char *Input;
   char *ParseLocation;

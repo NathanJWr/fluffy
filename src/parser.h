@@ -1,3 +1,8 @@
+struct lexer;
+typedef struct lexer lexer;
+
+struct ast_program;
+typedef struct ast_program ast_program;
 typedef struct {
   /* Token information */
   lexer *Lexer;
