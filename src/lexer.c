@@ -203,7 +203,12 @@ fluff_token_type readNumber(lexer *Lexer) {
   while ((isdigit(*Lexer->ParseLocation) || *Lexer->ParseLocation == '.') &&
          Lexer->ParseLocation != Lexer->EndLocation) {
     if (*Lexer->ParseLocation == '.') {
-      dotAmt++;
+      if (Lexer->ParseLocation + 1 != Lexer->EndLocation && !isdigit(*(Lexer->ParseLocation + 1))) {
+        break;
+      }
+      else {
+        dotAmt++;
+      }
     }
     *NumEnd++ = *Lexer->ParseLocation++;
   }
