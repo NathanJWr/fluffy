@@ -45,6 +45,7 @@ object *evalBangOperatorExpression(object *Ojb);
 object *evalMinusPrefixOperatorExpression(object *Obj);
 object *evalInfixExpression(fluff_token_type Op, object *Left, object *Right);
 object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env);
+object *evalFunctionCall(object *Fn, object **Exprs);
 object *evalInfixAssignExpression(ast_base *Left, ast_base *Right,
                                   environment *Env);
 object *evalNumberInfixExpression(fluff_token_type Op, object_number *Left,
@@ -215,28 +216,11 @@ object *Eval(ast_base *Node, environment *Env) {
   case AST_FUNCTION_CALL: {
     ast_function_call *Call = (ast_function_call *)Node;
     object *Fn = Eval(Call->FunctionName, Env);
-
     object **Exprs = evalExpressions(Call->Arguments, Env);
-    object *RetObject = NULL;
-
     if (Exprs[ArraySize(Exprs) - 1]->Type == FLUFF_OBJECT_ERROR) {
       return Exprs[ArraySize(Exprs) - 1];
     }
-
-    switch (Fn->Type) {
-    case FLUFF_OBJECT_FUNCTION: {
-      RetObject = applyFunction(Fn, Exprs);
-    } break;
-    case FLUFF_OBJECT_BUILTIN: {
-      object_builtin *Builtin = (object_builtin *)Fn;
-      RetObject = Builtin->Fn(Exprs);
-    } break;
-    default: {
-      break;
-    }
-    }
-    ArrayFree(Exprs);
-    return RetObject;
+    return evalFunctionCall(Fn, Exprs);
   } break;
 
   case AST_INDEX_EXPRESSION: {
@@ -284,6 +268,27 @@ object *Eval(ast_base *Node, environment *Env) {
     /* TODO: @Nathan want to throw an error here? */
     return (object *)&NullObject;
   }
+}
+
+/* Standard way to call a function. This should be used
+ * for any kind of function object and it's object arguments.
+ * This will free the array of object arguments Exprs */
+object *evalFunctionCall(object *Fn, object **Exprs) {
+  object *RetObject = NULL;
+  switch (Fn->Type) {
+  case FLUFF_OBJECT_FUNCTION: {
+    RetObject = applyFunction(Fn, Exprs);
+  } break;
+  case FLUFF_OBJECT_BUILTIN: {
+    object_builtin *Builtin = (object_builtin *)Fn;
+    RetObject = Builtin->Fn(Exprs);
+  } break;
+  default: {
+    break;
+  }
+  }
+  ArrayFree(Exprs);
+  return RetObject;
 }
 
 object *applyFunction(object *Fn, object **Args) {
@@ -561,25 +566,26 @@ object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env) {
      * the root object structure */
     ast_function_call *Method = (ast_function_call *)Right;
     object *Caller = Eval(Left, Env);
-    object *RetObject = NULL;
     object **Exprs = evalExpressions(Method->Arguments, Env);
 
-    if (ArraySize(Exprs) > 0 &&
-        Exprs[ArraySize(Exprs) - 1]->Type == FLUFF_OBJECT_ERROR) {
-      return Exprs[ArraySize(Exprs) - 1];
+    /* Insert the Caller into the beginning of exprs as a **this** pointer */
+    ArrayPush(Exprs, Caller);
+    if (ArraySize(Exprs) > 1) {
+      /* put Caller at the front */
+      size_t End = ArraySize(Exprs) - 1;
+      object *Temp = Exprs[0];
+      Exprs[0] = Exprs[End];
+      Exprs[End] = Temp;
     }
-
     const char *LookupMethod = ((ast_identifier *)Method->FunctionName)->Value;
-    object_method *CallerMethod =
-        (object_method *)FindInEnv(Caller->MethodEnv, LookupMethod);
-    if (CallerMethod) {
-      RetObject = CallerMethod->Method(Caller, Exprs);
+    object *Function = FindInEnv(Caller->MethodEnv, LookupMethod);
+    if (Function) {
+      return evalFunctionCall(Function, Exprs);
     } else {
-      RetObject = NewError("method not found");
+      return NewError("method %s not found for %s", LookupMethod,
+                      FluffObjectType[Caller->Type]);
     }
 
-    ArrayFree(Exprs);
-    return RetObject;
   } else {
     return NewError("expected function call after dot operator");
   }
@@ -719,6 +725,7 @@ object *evalNumberInfixExpression(fluff_token_type Op, object_number *Left,
                     FluffObjectType[Right->Base.Type]);
   }
   }
+  return NULL;
 }
 
 object *evalStringInfixExpression(fluff_token_type Op, object_string *Left,

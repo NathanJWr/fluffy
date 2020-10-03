@@ -1,10 +1,10 @@
 static environment ObjectArrayEnv;
-object *fluffMethodArrayLength(object *This, object **Args);
+object *fluffMethodArrayLength(object **Args);
 
-static object_method FluffMethodArrayLength = {
-    .Base.Type = FLUFF_OBJECT_METHOD,
-    .Base.Size = sizeof(object_method),
-    .Method = fluffMethodArrayLength,
+static object_builtin FluffMethodArrayLength = {
+    .Base.Type = FLUFF_OBJECT_BUILTIN,
+    .Base.Size = sizeof(object_builtin),
+    .Fn = fluffMethodArrayLength,
 };
 
 void InitObjectArrayEnv() {
@@ -14,11 +14,11 @@ void InitObjectArrayEnv() {
 
 environment *GetObjectArrayEnv() { return &ObjectArrayEnv; }
 
-object *fluffMethodArrayLength(object *This, object **Args) {
-  if (ArraySize(Args) > 0) {
-    return NewError("expected 0 arguments, got %d", ArraySize(Args));
+object *fluffMethodArrayLength(object **Args) {
+  if (ArraySize(Args) > 1) {
+    return NewError("expected 1 arguments, got %d", ArraySize(Args));
   }
-  object_array *Arr = (object_array *)This;
+  object_array *Arr = (object_array *)Args[0];
   object_number *Length = NewNumber();
   Length->Type = NUM_INTEGER;
   Length->Int = ArraySize(Arr->Items);

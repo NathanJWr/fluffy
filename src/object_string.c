@@ -1,20 +1,20 @@
 environment StringMethodEnv;
 
-static object *fluffMethodStringLength(object *This, object **Args) {
-  if (ArraySize(Args) > 0) {
-    return NewError("expected 0 arguments, got %d", ArraySize(Args));
+static object *fluffMethodStringLength(object **Args) {
+  if (ArraySize(Args) != 1) {
+    return NewError("expected 1 arguments, got %d", ArraySize(Args));
   }
-  object_string *Str = (object_string *)This;
+  object_string *Str = (object_string *)Args[0];
   object_number *Length = NewNumber();
   Length->Type = NUM_INTEGER;
   Length->Int = strlen(Str->Value);
   return (object *)Length;
 }
 
-static object_method FluffMethodStringLength = {
-    .Base.Type = FLUFF_OBJECT_METHOD,
-    .Base.Size = sizeof(object_method),
-    .Method = fluffMethodStringLength,
+static object_builtin FluffMethodStringLength = {
+    .Base.Type = FLUFF_OBJECT_BUILTIN,
+    .Base.Size = sizeof(object_builtin),
+    .Fn = fluffMethodStringLength,
 };
 
 void InitObjectStringEnv() {

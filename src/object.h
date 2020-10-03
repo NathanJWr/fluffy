@@ -107,18 +107,12 @@ typedef struct {
   environment_linked *RecurEnvs;
 } object_function;
 
-typedef object *(*BuiltinFunction)(object **Args);
+typedef object *(*builtin_function)(object **Args);
 typedef struct {
   object Base;
 
-  BuiltinFunction Fn;
+  builtin_function Fn;
 } object_builtin;
-
-typedef struct {
-  object Base;
-
-  object_method_function Method;
-} object_method;
 
 object *NewObject(object_type Type, unsigned int Size);
 object *NewError(const char *Message, ...);
