@@ -1,34 +1,3 @@
-/* Set up the function tables for each object type */
-object *fluffMethodStringLength(object *This, object **Args) {
-  if (ArraySize(Args) > 0) {
-    return NewError("expected 0 arguments, got %d", ArraySize(Args));
-  }
-  object_string *Str = (object_string *)This;
-  object_number *Length = NewNumber();
-  Length->Type = NUM_INTEGER;
-  Length->Int = strlen(Str->Value);
-  return (object *)Length;
-}
-
-object *fluffMethodArrayLength(object *This, object **Args) {
-  if (ArraySize(Args) > 0) {
-    return NewError("expected 0 arguments, got %d", ArraySize(Args));
-  }
-  object_array *Arr = (object_array *)This;
-  object_number *Length = NewNumber();
-  Length->Type = NUM_INTEGER;
-  Length->Int = ArraySize(Arr->Items);
-  return (object *)Length;
-}
-
-static fluff_object_function_table FluffStringFunctionTable = {
-    .MethodLength = fluffMethodStringLength,
-};
-
-static fluff_object_function_table FluffArrayFunctionTable = {
-    .MethodLength = fluffMethodArrayLength,
-};
-
 object *NewObject(object_type Type, unsigned int Size) {
   object *Obj = GCMalloc(Size);
   Obj->Type = Type;
@@ -36,13 +5,12 @@ object *NewObject(object_type Type, unsigned int Size) {
 
   switch (Type) {
   case FLUFF_OBJECT_STRING: {
-    Obj->SupportedFunctions = &FluffStringFunctionTable;
+    Obj->MethodEnv = GetObjectStringEnv();
   } break;
   case FLUFF_OBJECT_ARRAY: {
-    Obj->SupportedFunctions = &FluffArrayFunctionTable;
   } break;
   default: {
-    Obj->SupportedFunctions = NULL;
+    Obj->MethodEnv = NULL;
   }
   }
   return Obj;

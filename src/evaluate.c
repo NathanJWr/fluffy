@@ -66,6 +66,8 @@ void EvalInit(environment *Root) {
   AddToEnv(&BuiltinEnv, "print", (object *)&BuiltinPrint);
   AddToEnv(&BuiltinEnv, "type", (object *)&BuiltinType);
 
+  InitObjectMethodEnvs();
+
   /* Remember the root env */
   RootEnv = Root;
 }
@@ -558,7 +560,7 @@ object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env) {
      * each object's methods are located within the SupportedFunctions inside
      * the root object structure */
     ast_function_call *Method = (ast_function_call *)Right;
-    object *LeftEval = Eval(Left, Env);
+    object *Caller = Eval(Left, Env);
     object *RetObject = NULL;
     object **Exprs = evalExpressions(Method->Arguments, Env);
 
@@ -567,14 +569,11 @@ object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env) {
       return Exprs[ArraySize(Exprs) - 1];
     }
 
-    /* TODO: Better lookup strategy */
-    if (0 ==
-        strcmp(((ast_identifier *)Method->FunctionName)->Value, "length")) {
-      if (!LeftEval->SupportedFunctions->MethodLength) {
-        return NewError("unsupported method for object of type %s",
-                        FluffObjectType[LeftEval->Type]);
-      }
-      RetObject = LeftEval->SupportedFunctions->MethodLength(LeftEval, Exprs);
+    const char *LookupMethod = ((ast_identifier *)Method->FunctionName)->Value;
+    object_method *CallerMethod =
+        (object_method *)FindInEnv(Caller->MethodEnv, LookupMethod);
+    if (CallerMethod) {
+      RetObject = CallerMethod->Method(Caller, Exprs);
     } else {
       RetObject = NewError("method not found");
     }

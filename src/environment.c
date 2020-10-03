@@ -127,6 +127,9 @@ void AddToEnv(environment *Env, const char *Var, object *Obj) {
 }
 
 object *FindInEnv(environment *Env, const char *Var) {
+  if (Env == NULL || Var == NULL) {
+    return NULL;
+  }
   hashed_string HashedStr = hashString(Var);
   unsigned int Index = fastModulus(HashedStr.Hash, Env->ObjectsLength);
   unsigned int IndexesTried = 0;
