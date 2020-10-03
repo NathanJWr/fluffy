@@ -178,50 +178,56 @@ void markEnvironment(environment *Env) {
   GCMarkAllocation(Env->Objects);
 }
 
-void markAnySubObjects(object_bucket *Bucket);
+void markObject(object *Obj);
 void markAllObjectsInEnv(environment *Env) {
   unsigned int i;
   for (i = 0; i < Env->ObjectsLength; i++) {
     if (!isBucketEmpty(Env->Objects, i)) {
       object_bucket *Bucket = &Env->Objects[i];
-      GCMarkAllocation(Bucket->Obj);
-      markAnySubObjects(Bucket);
+      markObject(Bucket->Obj);
     }
   }
 }
 
-void markAnySubObjects(object_bucket *Bucket) {
-  object *Obj = Bucket->Obj;
-  switch (Obj->Type) {
+void markArrayObject(object_array *Arr) {
+  unsigned int i;
+  unsigned int ArrLength = ArraySize(Arr->Items);
+  GCArrayMarkAllocation(Arr->Items);
+  for (i = 0; i < ArrLength; i++) {
+    markObject(*Arr->Items[i]);
+    GCMarkAllocation(Arr->Items[i]);
+  }
+}
 
+void markFunctionObject(object_function *Func) {
+  if (!GCMarked(Func->Env)) {
+    EnvironmentMark(Func->Env);
+  }
+
+  environment_linked *Env = Func->RecurEnvs;
+  while (Env) {
+    GCMarkAllocation(Env);
+    EnvironmentMark(Env->Env);
+
+    Env = Env->Next;
+  }
+}
+
+void markObject(object *Obj) {
+  GCMarkAllocation(Obj);
+  switch (Obj->Type) {
   case FLUFF_OBJECT_RETURN: {
     GCMarkAllocation(((object_return *)Obj)->Retval);
   } break;
 
   case FLUFF_OBJECT_FUNCTION: {
     object_function *Func = (object_function *)Obj;
-    if (!GCMarked(Func->Env)) {
-      EnvironmentMark(Func->Env);
-    }
-
-    environment_linked *Env = Func->RecurEnvs;
-    while (Env) {
-      GCMarkAllocation(Env);
-      EnvironmentMark(Env->Env);
-
-      Env = Env->Next;
-    }
+    markFunctionObject(Func);
   } break;
 
   case FLUFF_OBJECT_ARRAY: {
     object_array *Arr = (object_array *)Obj;
-    unsigned int i;
-    unsigned int ArrLength = ArraySize(Arr->Items);
-    GCArrayMarkAllocation(Arr->Items);
-    for (i = 0; i < ArrLength; i++) {
-      GCMarkAllocation(*Arr->Items[i]);
-      GCMarkAllocation(Arr->Items[i]);
-    }
+    markArrayObject(Arr);
   } break;
 
   default: {

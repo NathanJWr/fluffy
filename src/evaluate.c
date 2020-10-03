@@ -22,17 +22,8 @@ object *builtinType(object **Args) {
                   ArraySize(Args));
 }
 
-static object_builtin BuiltinPrint = {
-    .Base.Type = FLUFF_OBJECT_BUILTIN,
-    .Base.Size = sizeof(object_builtin),
-    .Fn = builtinPrint,
-};
-
-static object_builtin BuiltinType = {
-    .Base.Type = FLUFF_OBJECT_BUILTIN,
-    .Base.Size = sizeof(object_builtin),
-    .Fn = builtinType,
-};
+STATIC_BUILTIN_FUNCTION_VARIABLE(BuiltinPrint, builtinPrint);
+STATIC_BUILTIN_FUNCTION_VARIABLE(BuiltinType, builtinType);
 
 /* TODO: switch statements default to NULL. Implement some kind of error
  * messages */
