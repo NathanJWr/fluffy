@@ -8,6 +8,7 @@
   X(FLUFF_OBJECT_ERROR)                                                        \
   X(FLUFF_OBJECT_FUNCTION)                                                     \
   X(FLUFF_OBJECT_BUILTIN)                                                      \
+  X(FLUFF_OBJECT_METHOD)                                                       \
   XX(OJECT_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -25,10 +26,11 @@ const char *FluffObjectType[] = {FLUFF_OBJECT_TYPE_LIST};
 /* Typedefs and pre-declarations */
 struct object;
 typedef struct object object;
-typedef object *(*object_method)(object *This, object **Args);
+typedef object *(*object_method_function)(object *This, object **Args);
 
+struct environment;
 typedef struct {
-  object_method MethodLength;
+  object_method_function MethodLength;
 } fluff_object_function_table;
 
 struct object {
@@ -39,7 +41,7 @@ struct object {
 #endif
 
   unsigned char Size;
-  fluff_object_function_table *SupportedFunctions;
+  struct environment *MethodEnv;
 };
 
 typedef struct {
@@ -88,7 +90,6 @@ typedef struct {
   char Message[];
 } object_error;
 
-struct environment;
 typedef struct environment_linked {
   struct environment *Env;
 
@@ -112,6 +113,12 @@ typedef struct {
 
   BuiltinFunction Fn;
 } object_builtin;
+
+typedef struct {
+  object Base;
+
+  object_method_function Method;
+} object_method;
 
 object *NewObject(object_type Type, unsigned int Size);
 object *NewError(const char *Message, ...);

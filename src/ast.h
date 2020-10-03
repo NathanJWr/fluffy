@@ -29,7 +29,7 @@ const char *AstType[] = {AST_TYPE_LIST};
 #undef X
 #undef XX
 
-typedef struct {
+typedef struct ast_base {
 #ifdef DEBUG_TYPES
   ast_type Type; /* Type of the "actual" ast node */
 #else
@@ -39,7 +39,7 @@ typedef struct {
   unsigned char Size; /* Size of the "actual" ast node */
 } ast_base;
 
-typedef struct {
+typedef struct ast_program {
   ast_base Base;
 
   ast_base **Statements;
