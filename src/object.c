@@ -8,6 +8,7 @@ object *NewObject(object_type Type, unsigned int Size) {
     Obj->MethodEnv = GetObjectStringEnv();
   } break;
   case FLUFF_OBJECT_ARRAY: {
+    Obj->MethodEnv = GetObjectArrayEnv();
   } break;
   default: {
     Obj->MethodEnv = NULL;
