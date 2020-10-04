@@ -15,6 +15,7 @@
   X(AST_STRING)                                                                \
   X(AST_ARRAY_LITERAL)                                                         \
   X(AST_INDEX_EXPRESSION)                                                      \
+  X(AST_CLASS_STATEMENT)                                                       \
   XX(AST_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -121,6 +122,13 @@ typedef struct {
   ast_identifier *Name;
   ast_base *Value;
 } ast_var_statement;
+
+typedef struct {
+  ast_base Base;
+
+  ast_identifier *Name;
+  ast_var_statement **Variables;
+} ast_class;
 
 typedef struct {
   ast_base Base;

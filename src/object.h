@@ -9,6 +9,7 @@
   X(FLUFF_OBJECT_FUNCTION)                                                     \
   X(FLUFF_OBJECT_BUILTIN)                                                      \
   X(FLUFF_OBJECT_METHOD)                                                       \
+  X(FLUFF_OBJECT_CLASS)                                                        \
   XX(OJECT_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -106,6 +107,12 @@ typedef struct {
 
   environment_linked *RecurEnvs;
 } object_function;
+
+typedef struct {
+  object Base;
+
+  ast_var_statement **Variables;
+} object_class;
 
 typedef object *(*builtin_function)(object **Args);
 typedef struct {

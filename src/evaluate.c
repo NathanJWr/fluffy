@@ -3,6 +3,7 @@ static object_null NullObject = {
     .Base.Size = 0,
 };
 
+static environment UserDefinedClasses;
 static environment BuiltinEnv;
 static environment *RootEnv;
 
@@ -60,6 +61,7 @@ void EvalInit(environment *Root) {
 
   InitObjectMethodEnvs();
 
+  InitEnv(&UserDefinedClasses, 8, GCMalloc);
   /* Remember the root env */
   RootEnv = Root;
 }
@@ -253,6 +255,34 @@ object *Eval(ast_base *Node, environment *Env) {
                       FluffObjectType[LookupObject->Type]);
     }
     }
+  } break;
+  case AST_CLASS_STATEMENT: {
+    ast_class *Class = (ast_class *)Node;
+    object_class *ClassObj =
+        (object_class *)NewObject(FLUFF_OBJECT_CLASS, sizeof(object_class));
+
+    ClassObj->Variables = NULL;
+    ClassObj->Base.MethodEnv = CreateEnvironment();
+    size_t ClassStatementsSize = ArraySize(Class->Variables);
+
+    /* Variables are split into two categories
+     * First is the functions, which can be evaluated and stored as
+     * methods right now. Second is the variables, which can be stored
+     * as their ast representations and instantiated when an object
+     * of this class is created */
+    for (size_t i = 0; i < ClassStatementsSize; i++) {
+      if (Class->Variables[i]->Value->Type == AST_FUNCTION_LITERAL) {
+        object *Method = Eval(Class->Variables[i]->Value, Env);
+        AddToEnv(ClassObj->Base.MethodEnv, Class->Variables[i]->Name->Value,
+                 Method);
+      } else {
+        GCArrayPush(ClassObj->Variables, Class->Variables[i]);
+      }
+    }
+
+    /* Insert the class name into the user defined class environemnt */
+    AddToEnv(&UserDefinedClasses, Class->Name->Value, (object *)ClassObj);
+    return (object *)&NullObject;
   } break;
 
   default:

@@ -189,6 +189,8 @@ fluff_token_type lookupFluffTokenType(char *ident) {
     return TOKEN_ELSE;
   } else if (0 == strcmp(ident, "return")) {
     return TOKEN_RETURN;
+  } else if (0 == strcmp(ident, "class")) {
+    return TOKEN_CLASS;
   } else {
     return TOKEN_IDENT;
   }
