@@ -10,6 +10,7 @@
   X(FLUFF_OBJECT_BUILTIN)                                                      \
   X(FLUFF_OBJECT_METHOD)                                                       \
   X(FLUFF_OBJECT_CLASS)                                                        \
+  X(FLUFF_OBJECT_CLASS_INSTANTIATION)                                          \
   XX(OJECT_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -113,6 +114,12 @@ typedef struct {
 
   ast_var_statement **Variables;
 } object_class;
+
+typedef struct {
+  object Base;
+
+  environment *Locals;
+} object_class_instantiation;
 
 typedef object *(*builtin_function)(object **Args);
 typedef struct {

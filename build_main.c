@@ -16,42 +16,40 @@
 #include <stdarg.h>
 #include <assert.h>
 #include <float.h>
-
-/* os dependant includes */
-#ifdef __linux__
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
-#endif
+#include <stdbool.h>
 
 /* debug includes */
 #include "src/leak_checker.h"
 
-/* project includes */
-#include "src/defines.h"
+/* stretchy arrays */
 #include "src/stretchy_array.h"
+
+/* project includes */
 #include "src/number.h"
-#include "src/token.h"
-#include "src/ast.h"
-#include "src/object.h"
+#include "src/object_methods.h"
+#include "src/object_string.h"
+#include "src/object_array.h"
 #include "src/environment.h"
+#include "src/evaluate.h"
 #include "src/garbage_collector.h"
 #include "src/stretchy_array_gc.h"
-#include "src/lexer.h"
+#include "src/token.h"
 #include "src/parser.h"
-#include "src/evaluate.h"
+#include "src/ast.h"
+#include "src/object.h"
+#include "src/lexer.h"
 
 /* project c files */
 #include "src/garbage_collector.c"
 #include "src/ast.c"
 #include "src/parser.c"
 #include "src/lexer.c"
+#include "src/object_methods.c"
 #include "src/object.c"
 #include "src/environment.c"
+#include "src/object_string.c"
+#include "src/object_array.c"
 #include "src/evaluate.c"
-
 
 #ifdef _WIN32
 #include <windows.h>

@@ -126,6 +126,36 @@ void AddToEnv(environment *Env, const char *Var, object *Obj) {
   }
 }
 
+void ReplaceInEnv(environment *Env, const char *Var, object *Item) {
+  hashed_string HashedStr = hashString(Var);
+  unsigned int Index = fastModulus(HashedStr.Hash, Env->ObjectsLength);
+  unsigned int IndexesTried = 0;
+
+  while (IndexesTried < Env->ObjectsLength &&
+         !isBucketEmpty(Env->Objects, Index)) {
+
+    if (!isBucketEmpty(Env->Objects, Index) &&
+        (HashEqual(Env->Objects[Index].Var, HashedStr))) {
+      /* Replace the old object with the new one */
+      Env->Objects[Index].Obj = Item;
+      return;
+    }
+    IndexesTried++;
+    Index++;
+
+    /* Wrap around to the start of the buffer */
+    if (Index > Env->ObjectsLength - 1) {
+      Index = 0;
+    }
+  }
+
+  /* We could not find the object to replace in the current
+   * environment, but it could be in the outer env */
+  if (Env->Outer) {
+    ReplaceInEnv(Env->Outer, Var, Item);
+  }
+}
+
 object *FindInEnv(environment *Env, const char *Var) {
   if (Env == NULL || Var == NULL) {
     return NULL;
@@ -215,6 +245,7 @@ void markFunctionObject(object_function *Func) {
 
 void markObject(object *Obj) {
   GCMarkAllocation(Obj);
+
   switch (Obj->Type) {
   case FLUFF_OBJECT_RETURN: {
     GCMarkAllocation(((object_return *)Obj)->Retval);
@@ -228,6 +259,22 @@ void markObject(object *Obj) {
   case FLUFF_OBJECT_ARRAY: {
     object_array *Arr = (object_array *)Obj;
     markArrayObject(Arr);
+  } break;
+
+  case FLUFF_OBJECT_CLASS: {
+    object_class *Class = (object_class *)Obj;
+    size_t VarLength = ArraySize(Class->Variables);
+
+    /* Don't need to iterate through array and mark
+     * each item because they are allocated in the ast */
+    GCArrayMarkAllocation(Class->Variables);
+
+    EnvironmentMark(Class->Base.MethodEnv);
+  } break;
+
+  case FLUFF_OBJECT_CLASS_INSTANTIATION: {
+    object_class_instantiation *Instance = (object_class_instantiation *)Obj;
+    EnvironmentMark(Instance->Locals);
   } break;
 
   default: {

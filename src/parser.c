@@ -45,6 +45,7 @@ ast_base *parseBoolean(parser *Parser);
 ast_base *parseGroupedExpression(parser *Parser);
 ast_base *parseIfExpression(parser *Parser);
 ast_base *parseFunctionLiteral(parser *Parser);
+ast_base *parseNewExpression(parser *Parser);
 
 /* Infix expression parsing function */
 typedef ast_base *(*InfixParseFunction)(parser *, ast_base *left);
@@ -269,6 +270,8 @@ PrefixParseFunction findPrefixParseFunction(fluff_token_type Token) {
     return parseString;
   case TOKEN_LSQUARE:
     return parseArray;
+  case TOKEN_NEW:
+    return parseNewExpression;
   default:
     printf("no prefix parse function for (%s) found\n", FluffTokenType[Token]);
     return NULL;
@@ -541,6 +544,24 @@ ast_base *parseIfExpression(parser *Parser) {
   }
 
   return (ast_base *)IfExpr;
+}
+
+/* parses a new expression:
+ * "new Foo" */
+ast_base *parseNewExpression(parser *Parser) {
+  ast_new_expression *New = (ast_new_expression *)astBaseNodeCreate(
+      Parser, sizeof(ast_new_expression), AST_NEW_EXPRESSION);
+  nextToken(Parser); /* move past the new token */
+
+  ast_base *Expr = parseExpression(Parser, PRECEDENCE_LOWEST);
+  if (Expr->Type == AST_IDENTIFIER) {
+    New->Class = (ast_identifier *)Expr;
+    nextToken(Parser);
+  } else {
+    return NULL;
+  }
+
+  return (ast_base *)New;
 }
 
 /* parses a function literal (i.e. a function declaration) like

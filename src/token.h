@@ -36,6 +36,7 @@
   /* Keywords */                                                               \
   X(FUNCTION)                                                                  \
   X(CLASS)                                                                     \
+  X(NEW)                                                                       \
   X(VAR)                                                                       \
   X(TRUE)                                                                      \
   X(FALSE)                                                                     \
