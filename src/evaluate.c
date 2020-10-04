@@ -3,7 +3,6 @@ static object_null NullObject = {
     .Base.Size = 0,
 };
 
-static environment UserDefinedClasses;
 static environment BuiltinEnv;
 static environment *RootEnv;
 
@@ -61,7 +60,6 @@ void EvalInit(environment *Root) {
 
   InitObjectMethodEnvs();
 
-  InitEnv(&UserDefinedClasses, 8, GCMalloc);
   /* Remember the root env */
   RootEnv = Root;
 }
@@ -281,8 +279,38 @@ object *Eval(ast_base *Node, environment *Env) {
     }
 
     /* Insert the class name into the user defined class environemnt */
-    AddToEnv(&UserDefinedClasses, Class->Name->Value, (object *)ClassObj);
+    AddToEnv(RootEnv, Class->Name->Value, (object *)ClassObj);
     return (object *)&NullObject;
+  } break;
+
+  case AST_NEW_EXPRESSION: {
+    ast_new_expression *Expr = (ast_new_expression *)Node;
+
+    /* find the class inside our stored user defined class env */
+    object *Obj = FindInEnv(RootEnv, Expr->Class->Value);
+    object_class *Class = NULL;
+    if (Obj->Type == FLUFF_OBJECT_CLASS) {
+      Class = (object_class *)Obj;
+    }
+    if (Class) {
+      /* Instantiate the class by creating an enclosed environemnt with
+       * whatever variables have been defined */
+      object_class_instantiation *Instance =
+          (object_class_instantiation *)NewObject(
+              FLUFF_OBJECT_CLASS_INSTANTIATION,
+              sizeof(object_class_instantiation));
+      Instance->Locals = CreateEnvironment();
+
+      size_t VarSize = ArraySize(Class->Variables);
+      for (size_t i = 0; i < VarSize; i++) {
+        Eval((ast_base *)Class->Variables[i], Instance->Locals);
+      }
+
+      Instance->Base.MethodEnv = Class->Base.MethodEnv;
+      return (object *)Instance;
+    } else {
+      return NewError("class %s does not exist", Expr->Class->Value);
+    }
   } break;
 
   default:
@@ -434,6 +462,7 @@ object *evalProgram(ast_program *Program, environment *Env) {
     if (GCNeedsCleanup()) {
       GCMarkAndSweep(RootEnv);
     }
+
     if (Result->Type == FLUFF_OBJECT_RETURN) {
       return ((object_return *)Result)->Retval;
     }
@@ -451,9 +480,6 @@ object *evalBlock(ast_block_statement *Block, environment *Env) {
   for (i = 0; i < StatementsSize; i++) {
     Result = Eval(Statements[i], Env);
 
-    if (GCNeedsCleanup()) {
-      GCMarkAndSweep(RootEnv);
-    }
     if (Result->Type == FLUFF_OBJECT_RETURN) {
       return Result;
     }
@@ -569,7 +595,7 @@ object *evalInfixAssignExpression(ast_base *Left, ast_base *Right,
   if (Left->Type == AST_IDENTIFIER) {
     const char *Var = ((ast_identifier *)Left)->Value;
     if (FindInEnv(Env, Var)) {
-      AddToEnv(Env, Var, RightObj);
+      ReplaceInEnv(Env, Var, RightObj);
     } else {
       return NewError("variable %s does not exist yet!", Var);
     }
@@ -590,16 +616,21 @@ object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env) {
     object **Exprs = evalExpressions(Method->Arguments, Env);
 
     /* Insert the Caller into the beginning of exprs as a **this** pointer */
-    ArrayPush(Exprs, Caller);
-    if (ArraySize(Exprs) > 1) {
-      /* put Caller at the front */
-      size_t End = ArraySize(Exprs) - 1;
-      object *Temp = Exprs[0];
-      Exprs[0] = Exprs[End];
-      Exprs[End] = Temp;
-    }
     const char *LookupMethod = ((ast_identifier *)Method->FunctionName)->Value;
     object *Function = FindInEnv(Caller->MethodEnv, LookupMethod);
+    if (Caller->Type == FLUFF_OBJECT_CLASS_INSTANTIATION) {
+      ((object_function *)Function)->Env =
+          ((object_class_instantiation *)Caller)->Locals;
+    } else {
+      ArrayPush(Exprs, Caller);
+      if (ArraySize(Exprs) > 1) {
+        /* put Caller at the front */
+        size_t End = ArraySize(Exprs) - 1;
+        object *Temp = Exprs[0];
+        Exprs[0] = Exprs[End];
+        Exprs[End] = Temp;
+      }
+    }
     if (Function) {
       return evalFunctionCall(Function, Exprs);
     } else {
