@@ -9,6 +9,8 @@
   X(FLUFF_OBJECT_FUNCTION)                                                     \
   X(FLUFF_OBJECT_BUILTIN)                                                      \
   X(FLUFF_OBJECT_METHOD)                                                       \
+  X(FLUFF_OBJECT_CLASS)                                                        \
+  X(FLUFF_OBJECT_CLASS_INSTANTIATION)                                          \
   XX(OJECT_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -107,23 +109,35 @@ typedef struct {
   environment_linked *RecurEnvs;
 } object_function;
 
-typedef object *(*BuiltinFunction)(object **Args);
 typedef struct {
   object Base;
 
-  BuiltinFunction Fn;
+  ast_var_statement **Variables;
+} object_class;
+
+typedef struct {
+  object Base;
+
+  environment *Locals;
+} object_class_instantiation;
+
+typedef object *(*builtin_function)(object **Args);
+typedef struct {
+  object Base;
+
+  builtin_function Fn;
 } object_builtin;
-
-typedef struct {
-  object Base;
-
-  object_method_function Method;
-} object_method;
 
 object *NewObject(object_type Type, unsigned int Size);
 object *NewError(const char *Message, ...);
 void PrintObject(object *Obj);
 
+#define STATIC_BUILTIN_FUNCTION_VARIABLE(Name, Function)                       \
+  static object_builtin Name = {                                               \
+      .Base.Type = FLUFF_OBJECT_BUILTIN,                                       \
+      .Base.Size = sizeof(object_builtin),                                     \
+      .Fn = Function,                                                          \
+  }
 /* Constructors for other objects */
 
 #define NewNumber()                                                            \
@@ -134,6 +148,8 @@ void PrintObject(object *Obj);
   ((object_return *)NewObject(FLUFF_OBJECT_RETURN, sizeof(object_return)))
 #define NewFunction()                                                          \
   ((object_function *)NewObject(FLUFF_OBJECT_FUNCTION, sizeof(object_function)))
+#define NewArray()                                                             \
+  ((object_array *)NewObject(FLUFF_OBJECT_ARRAY, sizeof(object_array)))
 
 #define NewString(StrSize)                                                     \
   ((object_string *)NewObject(FLUFF_OBJECT_STRING,                             \

@@ -189,6 +189,10 @@ fluff_token_type lookupFluffTokenType(char *ident) {
     return TOKEN_ELSE;
   } else if (0 == strcmp(ident, "return")) {
     return TOKEN_RETURN;
+  } else if (0 == strcmp(ident, "class")) {
+    return TOKEN_CLASS;
+  } else if (0 == strcmp(ident, "new")) {
+    return TOKEN_NEW;
   } else {
     return TOKEN_IDENT;
   }
@@ -203,10 +207,10 @@ fluff_token_type readNumber(lexer *Lexer) {
   while ((isdigit(*Lexer->ParseLocation) || *Lexer->ParseLocation == '.') &&
          Lexer->ParseLocation != Lexer->EndLocation) {
     if (*Lexer->ParseLocation == '.') {
-      if (Lexer->ParseLocation + 1 != Lexer->EndLocation && !isdigit(*(Lexer->ParseLocation + 1))) {
+      if (Lexer->ParseLocation + 1 != Lexer->EndLocation &&
+          !isdigit(*(Lexer->ParseLocation + 1))) {
         break;
-      }
-      else {
+      } else {
         dotAmt++;
       }
     }

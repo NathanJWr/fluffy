@@ -3,6 +3,7 @@ static object_null NullObject = {
     .Base.Size = 0,
 };
 
+static environment UserDefinedClasses;
 static environment BuiltinEnv;
 static environment *RootEnv;
 
@@ -22,17 +23,8 @@ object *builtinType(object **Args) {
                   ArraySize(Args));
 }
 
-static object_builtin BuiltinPrint = {
-    .Base.Type = FLUFF_OBJECT_BUILTIN,
-    .Base.Size = sizeof(object_builtin),
-    .Fn = builtinPrint,
-};
-
-static object_builtin BuiltinType = {
-    .Base.Type = FLUFF_OBJECT_BUILTIN,
-    .Base.Size = sizeof(object_builtin),
-    .Fn = builtinType,
-};
+STATIC_BUILTIN_FUNCTION_VARIABLE(BuiltinPrint, builtinPrint);
+STATIC_BUILTIN_FUNCTION_VARIABLE(BuiltinType, builtinType);
 
 /* TODO: switch statements default to NULL. Implement some kind of error
  * messages */
@@ -45,6 +37,7 @@ object *evalBangOperatorExpression(object *Ojb);
 object *evalMinusPrefixOperatorExpression(object *Obj);
 object *evalInfixExpression(fluff_token_type Op, object *Left, object *Right);
 object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env);
+object *evalFunctionCall(object *Fn, object **Exprs);
 object *evalInfixAssignExpression(ast_base *Left, ast_base *Right,
                                   environment *Env);
 object *evalNumberInfixExpression(fluff_token_type Op, object_number *Left,
@@ -68,6 +61,7 @@ void EvalInit(environment *Root) {
 
   InitObjectMethodEnvs();
 
+  InitEnv(&UserDefinedClasses, 8, GCMalloc);
   /* Remember the root env */
   RootEnv = Root;
 }
@@ -215,28 +209,11 @@ object *Eval(ast_base *Node, environment *Env) {
   case AST_FUNCTION_CALL: {
     ast_function_call *Call = (ast_function_call *)Node;
     object *Fn = Eval(Call->FunctionName, Env);
-
     object **Exprs = evalExpressions(Call->Arguments, Env);
-    object *RetObject = NULL;
-
     if (Exprs[ArraySize(Exprs) - 1]->Type == FLUFF_OBJECT_ERROR) {
       return Exprs[ArraySize(Exprs) - 1];
     }
-
-    switch (Fn->Type) {
-    case FLUFF_OBJECT_FUNCTION: {
-      RetObject = applyFunction(Fn, Exprs);
-    } break;
-    case FLUFF_OBJECT_BUILTIN: {
-      object_builtin *Builtin = (object_builtin *)Fn;
-      RetObject = Builtin->Fn(Exprs);
-    } break;
-    default: {
-      break;
-    }
-    }
-    ArrayFree(Exprs);
-    return RetObject;
+    return evalFunctionCall(Fn, Exprs);
   } break;
 
   case AST_INDEX_EXPRESSION: {
@@ -279,11 +256,60 @@ object *Eval(ast_base *Node, environment *Env) {
     }
     }
   } break;
+  case AST_CLASS_STATEMENT: {
+    ast_class *Class = (ast_class *)Node;
+    object_class *ClassObj =
+        (object_class *)NewObject(FLUFF_OBJECT_CLASS, sizeof(object_class));
+
+    ClassObj->Variables = NULL;
+    ClassObj->Base.MethodEnv = CreateEnvironment();
+    size_t ClassStatementsSize = ArraySize(Class->Variables);
+
+    /* Variables are split into two categories
+     * First is the functions, which can be evaluated and stored as
+     * methods right now. Second is the variables, which can be stored
+     * as their ast representations and instantiated when an object
+     * of this class is created */
+    for (size_t i = 0; i < ClassStatementsSize; i++) {
+      if (Class->Variables[i]->Value->Type == AST_FUNCTION_LITERAL) {
+        object *Method = Eval(Class->Variables[i]->Value, Env);
+        AddToEnv(ClassObj->Base.MethodEnv, Class->Variables[i]->Name->Value,
+                 Method);
+      } else {
+        GCArrayPush(ClassObj->Variables, Class->Variables[i]);
+      }
+    }
+
+    /* Insert the class name into the user defined class environemnt */
+    AddToEnv(&UserDefinedClasses, Class->Name->Value, (object *)ClassObj);
+    return (object *)&NullObject;
+  } break;
 
   default:
     /* TODO: @Nathan want to throw an error here? */
     return (object *)&NullObject;
   }
+}
+
+/* Standard way to call a function. This should be used
+ * for any kind of function object and it's object arguments.
+ * This will free the array of object arguments Exprs */
+object *evalFunctionCall(object *Fn, object **Exprs) {
+  object *RetObject = NULL;
+  switch (Fn->Type) {
+  case FLUFF_OBJECT_FUNCTION: {
+    RetObject = applyFunction(Fn, Exprs);
+  } break;
+  case FLUFF_OBJECT_BUILTIN: {
+    object_builtin *Builtin = (object_builtin *)Fn;
+    RetObject = Builtin->Fn(Exprs);
+  } break;
+  default: {
+    break;
+  }
+  }
+  ArrayFree(Exprs);
+  return RetObject;
 }
 
 object *applyFunction(object *Fn, object **Args) {
@@ -561,25 +587,26 @@ object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env) {
      * the root object structure */
     ast_function_call *Method = (ast_function_call *)Right;
     object *Caller = Eval(Left, Env);
-    object *RetObject = NULL;
     object **Exprs = evalExpressions(Method->Arguments, Env);
 
-    if (ArraySize(Exprs) > 0 &&
-        Exprs[ArraySize(Exprs) - 1]->Type == FLUFF_OBJECT_ERROR) {
-      return Exprs[ArraySize(Exprs) - 1];
+    /* Insert the Caller into the beginning of exprs as a **this** pointer */
+    ArrayPush(Exprs, Caller);
+    if (ArraySize(Exprs) > 1) {
+      /* put Caller at the front */
+      size_t End = ArraySize(Exprs) - 1;
+      object *Temp = Exprs[0];
+      Exprs[0] = Exprs[End];
+      Exprs[End] = Temp;
     }
-
     const char *LookupMethod = ((ast_identifier *)Method->FunctionName)->Value;
-    object_method *CallerMethod =
-        (object_method *)FindInEnv(Caller->MethodEnv, LookupMethod);
-    if (CallerMethod) {
-      RetObject = CallerMethod->Method(Caller, Exprs);
+    object *Function = FindInEnv(Caller->MethodEnv, LookupMethod);
+    if (Function) {
+      return evalFunctionCall(Function, Exprs);
     } else {
-      RetObject = NewError("method not found");
+      return NewError("method %s not found for %s", LookupMethod,
+                      FluffObjectType[Caller->Type]);
     }
 
-    ArrayFree(Exprs);
-    return RetObject;
   } else {
     return NewError("expected function call after dot operator");
   }
@@ -719,6 +746,7 @@ object *evalNumberInfixExpression(fluff_token_type Op, object_number *Left,
                     FluffObjectType[Right->Base.Type]);
   }
   }
+  return NULL;
 }
 
 object *evalStringInfixExpression(fluff_token_type Op, object_string *Left,

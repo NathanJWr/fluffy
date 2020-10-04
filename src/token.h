@@ -1,4 +1,4 @@
-#define FLUFF_fluff_token_type_LIST                                                        \
+#define FLUFF_fluff_token_type_LIST                                            \
   X(ILLEGAL)                                                                   \
   X(END)                                                                       \
                                                                                \
@@ -35,6 +35,8 @@
                                                                                \
   /* Keywords */                                                               \
   X(FUNCTION)                                                                  \
+  X(CLASS)                                                                     \
+  X(NEW)                                                                       \
   X(VAR)                                                                       \
   X(TRUE)                                                                      \
   X(FALSE)                                                                     \

@@ -24,6 +24,7 @@ typedef struct environment {
 
 void InitEnv(environment *Env, unsigned int Size, mallocFunc MallocFunc);
 void AddToEnv(environment *Env, const char *Var, object *Obj);
+void ReplaceInEnv(environment *Env, const char *Var, object *Item);
 
 environment *CreateEnvironment(void);
 environment *CreateEnclosedEnvironment(environment *Outer);

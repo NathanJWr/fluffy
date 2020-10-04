@@ -28,6 +28,7 @@
 #include "src/number.h"
 #include "src/object_methods.h"
 #include "src/object_string.h"
+#include "src/object_array.h"
 #include "src/environment.h"
 #include "src/evaluate.h"
 #include "src/garbage_collector.h"
@@ -47,5 +48,7 @@
 #include "src/object.c"
 #include "src/environment.c"
 #include "src/object_string.c"
+#include "src/object_array.c"
 #include "src/evaluate.c"
 #include "src/repl.c"
+

@@ -30,6 +30,7 @@ ast_base *parseExpression(parser *Parser, unsigned int Precedence);
 /* statement parsing */
 ast_base *parseVarStatement(parser *Parser);
 ast_base *parseRetStatement(parser *Parser);
+ast_base *parseClassStatement(parser *Parser);
 
 /* Prefix expression parsing function */
 typedef ast_base *(*PrefixParseFunction)(parser *);
@@ -44,6 +45,7 @@ ast_base *parseBoolean(parser *Parser);
 ast_base *parseGroupedExpression(parser *Parser);
 ast_base *parseIfExpression(parser *Parser);
 ast_base *parseFunctionLiteral(parser *Parser);
+ast_base *parseNewExpression(parser *Parser);
 
 /* Infix expression parsing function */
 typedef ast_base *(*InfixParseFunction)(parser *, ast_base *left);
@@ -104,9 +106,46 @@ ast_base *parseStatement(parser *Parser) {
     return parseVarStatement(Parser);
   case TOKEN_RETURN:
     return parseRetStatement(Parser);
+  case TOKEN_CLASS:
+    return parseClassStatement(Parser);
   default:
     return parseExpressionStatement(Parser);
   }
+}
+
+/* class statement:
+ * "class { ... }" */
+ast_base *parseClassStatement(parser *Parser) {
+  ast_class *Class = (ast_class *)astBaseNodeCreate(Parser, sizeof(ast_class),
+                                                    AST_CLASS_STATEMENT);
+
+  Class->Variables = NULL;
+
+  nextToken(Parser);
+  ast_base *ClassName = parseExpression(Parser, PRECEDENCE_LOWEST);
+  if (ClassName->Type == AST_IDENTIFIER) {
+    Class->Name = (ast_identifier *)ClassName;
+  } else {
+    return NULL;
+  }
+
+  if (Parser->PeekToken != TOKEN_LBRACE) {
+    return NULL;
+  }
+  nextToken(Parser);
+  nextToken(Parser);
+
+  while (Parser->CurToken != TOKEN_RBRACE) {
+    ast_base *Expr = parseStatement(Parser);
+    if (Expr->Type == AST_VAR_STATEMENT) {
+      ArrayPush(Class->Variables, (ast_var_statement *)Expr);
+    } else {
+      return NULL;
+    }
+    nextToken(Parser);
+  }
+
+  return (ast_base *)Class;
 }
 
 /* var statements:
@@ -231,6 +270,8 @@ PrefixParseFunction findPrefixParseFunction(fluff_token_type Token) {
     return parseString;
   case TOKEN_LSQUARE:
     return parseArray;
+  case TOKEN_NEW:
+    return parseNewExpression;
   default:
     printf("no prefix parse function for (%s) found\n", FluffTokenType[Token]);
     return NULL;
@@ -503,6 +544,24 @@ ast_base *parseIfExpression(parser *Parser) {
   }
 
   return (ast_base *)IfExpr;
+}
+
+/* parses a new expression:
+ * "new Foo" */
+ast_base *parseNewExpression(parser *Parser) {
+  ast_new_expression *New = (ast_new_expression *)astBaseNodeCreate(
+      Parser, sizeof(ast_new_expression), AST_NEW_EXPRESSION);
+  nextToken(Parser); /* move past the new token */
+
+  ast_base *Expr = parseExpression(Parser, PRECEDENCE_LOWEST);
+  if (Expr->Type == AST_IDENTIFIER) {
+    New->Class = (ast_identifier *)Expr;
+    nextToken(Parser);
+  } else {
+    return NULL;
+  }
+
+  return (ast_base *)New;
 }
 
 /* parses a function literal (i.e. a function declaration) like
