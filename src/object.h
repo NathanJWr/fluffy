@@ -134,6 +134,8 @@ void PrintObject(object *Obj);
   ((object_return *)NewObject(FLUFF_OBJECT_RETURN, sizeof(object_return)))
 #define NewFunction()                                                          \
   ((object_function *)NewObject(FLUFF_OBJECT_FUNCTION, sizeof(object_function)))
+#define NewArray()                                                             \
+  ((object_array *)NewObject(FLUFF_OBJECT_ARRAY, sizeof(object_array)))
 
 #define NewString(StrSize)                                                     \
   ((object_string *)NewObject(FLUFF_OBJECT_STRING,                             \
