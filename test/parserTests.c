@@ -133,6 +133,22 @@ void readBlock(ast_base *base, va_list expectedTypes, int tabs) {
       readBlock(block->Statements[i], expectedTypes, tabs + 1);
     }
   } break;
+  case AST_FUNCTION_LITERAL: {
+    ast_function_literal *fnlit = (ast_function_literal *)base;
+    int i, len = ArraySize(fnlit->Parameters);
+    for (i = 0; i < len; i++) {
+      readBlock(fnlit->Parameters[i], expectedTypes, tabs + 1);
+    }
+    readBlock(fnlit->Body, expectedTypes, tabs + 1);
+  } break;
+  case AST_FUNCTION_CALL: {
+    ast_function_call *fncall = (ast_function_call *)base;
+    readBlock(fncall->FunctionName, expectedTypes, tabs + 1);
+    int i, len = ArraySize(fncall->Arguments);
+    for (i = 0; i < len; i++) {
+      readBlock(fncall->Arguments[i], expectedTypes, tabs + 1);
+    }
+  } break;
   default: {
     assert(0);
   } break;

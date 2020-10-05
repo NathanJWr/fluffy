@@ -42,6 +42,9 @@ int main(int argc, char **argv) {
   testParser("if(true) { 1; } else { 0; }", AST_PROGRAM, AST_IF_EXPRESSION,
              AST_BOOLEAN, true, AST_BLOCK_STATEMENT, AST_NUMBER, 1,
              AST_BLOCK_STATEMENT, AST_NUMBER, 0);
+  testParser("var a = fn(b) { return b; }", AST_PROGRAM, AST_VAR_STATEMENT,
+             AST_IDENTIFIER, "a", AST_FUNCTION_LITERAL, AST_IDENTIFIER, "b",
+             AST_BLOCK_STATEMENT, AST_RETURN_STATEMENT, AST_IDENTIFIER, "b");
   printf("All tests passed.\n");
   return 0;
 }
