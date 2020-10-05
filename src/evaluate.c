@@ -28,12 +28,27 @@ STATIC_BUILTIN_FUNCTION_VARIABLE(BuiltinType, builtinType);
 /* TODO: switch statements default to NULL. Implement some kind of error
  * messages */
 object *evalProgram(ast_program *Program, environment *Env);
+object *evalNumber(ast_base *Node);
+object *evalBool(ast_base *Node);
+object *evalString(ast_base *Node);
+object *evalArrayLiteral(ast_base *Node, environment *Env);
 object *evalBlock(ast_block_statement *Block, environment *Env);
 object **evalExpressions(ast_base **Exprs, environment *Env);
 object ***evalArrayItems(ast_base **Items, environment *Env);
+object *evalPrefix(ast_base *Node, environment *Env);
 object *evalPrefixExpression(fluff_token_type Op, object *Obj);
+object *evalIfExpression(ast_base *Node, environment *Env);
+object *evalReturnStatement(ast_base *Node, environment *Env);
+object *evalVarStatement(ast_base *Node, environment *Env);
+object *evalIdentifier(ast_base *Node, environment *Env);
+object *evalFunctionLiteral(ast_base *Node, environment *Env);
+object *evalFunction(ast_base *Node, environment *Env);
+object *evalIndexExpression(ast_base *Node, environment *Env);
+object *evalClassStatement(ast_base *Node, environment *Env);
+object *evalNewExpression(ast_base *Node, environment *Env);
 object *evalBangOperatorExpression(object *Ojb);
 object *evalMinusPrefixOperatorExpression(object *Obj);
+object *evalInfix(ast_base *Node, environment *Env);
 object *evalInfixExpression(fluff_token_type Op, object *Left, object *Right);
 object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env);
 object *evalFunctionCall(object *Fn, object **Exprs);
@@ -66,256 +81,281 @@ void EvalInit(environment *Root) {
 
 object *Eval(ast_base *Node, environment *Env) {
   switch (Node->Type) {
-
-  case AST_PROGRAM: {
+  case AST_PROGRAM:
     return evalProgram((ast_program *)Node, Env);
-  } break;
-
-  case AST_NUMBER: {
-    object_number *Num = NewNumber();
-    Num->Type = ((ast_number *)Node)->Type;
-    switch (Num->Type) {
-    case NUM_INTEGER: {
-      Num->Int = ((ast_number *)Node)->Int;
-    } break;
-    case NUM_DOUBLE: {
-      Num->Dbl = ((ast_number *)Node)->Dbl;
-    } break;
-    default: {
-      assert(0);
-    } break;
-    }
-    return (object *)Num;
-  } break;
-
-  case AST_BOOLEAN: {
-    object_boolean *Bool = NewBoolean();
-    Bool->Value = ((ast_boolean *)Node)->Value;
-    return (object *)Bool;
-  } break;
-
-  case AST_STRING: {
-    char *AstStr = ((ast_string *)Node)->Value;
-    object_string *Str = (object_string *)NewObject(
-        FLUFF_OBJECT_STRING, sizeof(object_string) + strlen(AstStr) + 1);
-    strcpy(Str->Value, AstStr);
-    return (object *)Str;
-  } break;
-
-  case AST_ARRAY_LITERAL: {
-    ast_array_literal *Arr = (ast_array_literal *)Node;
-    object_array *ArrObject =
-        (object_array *)NewObject(FLUFF_OBJECT_ARRAY, sizeof(object_array));
-    ArrObject->Items = evalArrayItems(Arr->Items, Env);
-    return (object *)ArrObject;
-  } break;
-
-  case AST_PREFIX_EXPRESSION: {
-    ast_prefix_expression *Prefix = (ast_prefix_expression *)Node;
-    object *Right = Eval(Prefix->Right, Env);
-    if (Right->Type == FLUFF_OBJECT_ERROR) {
-      return Right;
-    }
-    return evalPrefixExpression(Prefix->Operation, Right);
-  } break;
-
-  case AST_INFIX_EXPRESSION: {
-    ast_infix_expression *Infix = (ast_infix_expression *)Node;
-    if (Infix->Left->Type == AST_IDENTIFIER &&
-        Infix->Operation == TOKEN_ASSIGN) {
-      return evalInfixAssignExpression(Infix->Left, Infix->Right, Env);
-    } else if (Infix->Operation == TOKEN_DOT) {
-      return evalDotOperator(Infix->Left, Infix->Right, Env);
-    }
-
-    object *Left = Eval(Infix->Left, Env);
-    object *Right = Eval(Infix->Right, Env);
-    if (Left->Type == FLUFF_OBJECT_ERROR) {
-      return Left;
-    }
-    if (Right->Type == FLUFF_OBJECT_ERROR) {
-      return Right;
-    }
-    return evalInfixExpression(Infix->Operation, Left, Right);
-  } break;
-
-  case AST_BLOCK_STATEMENT: {
+  case AST_NUMBER:
+    return evalNumber(Node);
+  case AST_BOOLEAN:
+    return evalBool(Node);
+  case AST_STRING:
+    return evalString(Node);
+  case AST_ARRAY_LITERAL:
+    return evalArrayLiteral(Node, Env);
+  case AST_PREFIX_EXPRESSION:
+    return evalPrefix(Node, Env);
+  case AST_INFIX_EXPRESSION:
+    return evalInfix(Node, Env);
+  case AST_BLOCK_STATEMENT:
     return evalBlock((ast_block_statement *)Node, Env);
-  } break;
-
-  case AST_IF_EXPRESSION: {
-    ast_if_expression *IfExpr = (ast_if_expression *)Node;
-    object *Cond = Eval(IfExpr->Condition, Env);
-    if (Cond->Type == FLUFF_OBJECT_ERROR) {
-      return Cond;
-    }
-    if (isTruthy(Cond)) {
-      return Eval(IfExpr->Consequence, Env);
-    } else if (IfExpr->Alternative) {
-      return Eval(IfExpr->Alternative, Env);
-    } else {
-      return (object *)&NullObject;
-    }
-  } break;
-
-  case AST_RETURN_STATEMENT: {
-    object_return *Return = NewReturn();
-    object *Retval = Eval(((ast_return_statement *)Node)->Expr, Env);
-    Return->Retval = Retval;
-    return (object *)Return;
-  } break;
-
-  case AST_VAR_STATEMENT: {
-    ast_var_statement *Stmt = (ast_var_statement *)Node;
-    object *Val = Eval(Stmt->Value, Env);
-    if (Val->Type == FLUFF_OBJECT_ERROR) {
-      return Val;
-    }
-
-    if (!FindInEnv(Env, (char *)Stmt->Name->Value)) {
-      AddToEnv(Env, (char *)Stmt->Name->Value, Val);
-    } else {
-      return NewError("variable %s already exists!", Stmt->Name->Value);
-    }
-    return (object *)&NullObject;
-  } break;
-
-  case AST_IDENTIFIER: {
-    ast_identifier *Ident = (ast_identifier *)Node;
-    object *Obj = FindInEnv(Env, Ident->Value);
-    if (Obj) {
-      return Obj;
-    }
-    Obj = FindInEnv(&BuiltinEnv, Ident->Value);
-    if (Obj) {
-      return Obj;
-    } else {
-      return (object *)&NullObject;
-    }
-  } break;
-
-  case AST_FUNCTION_LITERAL: {
-    ast_function_literal *Fn = (ast_function_literal *)Node;
-    object_function *FnObj = NewFunction();
-    FnObj->Parameters = (ast_identifier **)Fn->Parameters;
-    FnObj->Body = (ast_block_statement *)Fn->Body;
-    FnObj->Env = Env;
-    FnObj->RecurEnvs = NULL;
-    return (object *)FnObj;
-  } break;
-
-  case AST_FUNCTION_CALL: {
-    ast_function_call *Call = (ast_function_call *)Node;
-    object *Fn = Eval(Call->FunctionName, Env);
-    object **Exprs = evalExpressions(Call->Arguments, Env);
-    if (Exprs[ArraySize(Exprs) - 1]->Type == FLUFF_OBJECT_ERROR) {
-      return Exprs[ArraySize(Exprs) - 1];
-    }
-    return evalFunctionCall(Fn, Exprs);
-  } break;
-
-  case AST_INDEX_EXPRESSION: {
-    ast_index *IndexExpr = (ast_index *)Node;
-    object *IndexEval = Eval(IndexExpr->Index, Env);
-    object_number *IndexNumber = NULL;
-    object *LookupObject = NULL;
-
-    if (IndexEval->Type == FLUFF_OBJECT_ERROR) {
-      return IndexEval;
-    }
-    /* We really care that the index is actaully a number */
-    if (IndexEval->Type != FLUFF_OBJECT_NUMBER) {
-      return NewError("index is not a number, is %s",
-                      FluffObjectType[IndexNumber->Type]);
-    }
-    IndexNumber = (object_number *)IndexEval;
-    /* We shouldn't try to index with a double */
-    if (IndexNumber->Type != NUM_INTEGER) {
-      return NewError("index is not and integer");
-    }
-
-    /* Find the object we want to index into */
-    LookupObject = FindInEnv(Env, IndexExpr->Var->Value);
-    switch (LookupObject->Type) {
-    case FLUFF_OBJECT_ARRAY: {
-      object_array *Arr = (object_array *)LookupObject;
-      /* Check the bounds of the array before accessing */
-      if (IndexNumber->Int < 0 || IndexNumber->Int >= ArraySize(Arr->Items)) {
-        return NewError(
-            "attempting to access array elements out of bounds with index %d",
-            IndexNumber->Int);
-      }
-      return *Arr->Items[IndexNumber->Int];
-    } break;
-
-    default: {
-      return NewError("cannot index object of type %s",
-                      FluffObjectType[LookupObject->Type]);
-    }
-    }
-  } break;
-  case AST_CLASS_STATEMENT: {
-    ast_class *Class = (ast_class *)Node;
-    object_class *ClassObj =
-        (object_class *)NewObject(FLUFF_OBJECT_CLASS, sizeof(object_class));
-
-    ClassObj->Variables = NULL;
-    ClassObj->Base.MethodEnv = CreateEnvironment();
-    size_t ClassStatementsSize = ArraySize(Class->Variables);
-
-    /* Variables are split into two categories
-     * First is the functions, which can be evaluated and stored as
-     * methods right now. Second is the variables, which can be stored
-     * as their ast representations and instantiated when an object
-     * of this class is created */
-    for (size_t i = 0; i < ClassStatementsSize; i++) {
-      if (Class->Variables[i]->Value->Type == AST_FUNCTION_LITERAL) {
-        object *Method = Eval(Class->Variables[i]->Value, Env);
-        AddToEnv(ClassObj->Base.MethodEnv, Class->Variables[i]->Name->Value,
-                 Method);
-      } else {
-        GCArrayPush(ClassObj->Variables, Class->Variables[i]);
-      }
-    }
-
-    /* Insert the class name into the user defined class environemnt */
-    AddToEnv(RootEnv, Class->Name->Value, (object *)ClassObj);
-    return (object *)&NullObject;
-  } break;
-
-  case AST_NEW_EXPRESSION: {
-    ast_new_expression *Expr = (ast_new_expression *)Node;
-
-    /* find the class inside our stored user defined class env */
-    object *Obj = FindInEnv(RootEnv, Expr->Class->Value);
-    object_class *Class = NULL;
-    if (Obj->Type == FLUFF_OBJECT_CLASS) {
-      Class = (object_class *)Obj;
-    }
-    if (Class) {
-      /* Instantiate the class by creating an enclosed environemnt with
-       * whatever variables have been defined */
-      object_class_instantiation *Instance =
-          (object_class_instantiation *)NewObject(
-              FLUFF_OBJECT_CLASS_INSTANTIATION,
-              sizeof(object_class_instantiation));
-      Instance->Locals = CreateEnvironment();
-
-      size_t VarSize = ArraySize(Class->Variables);
-      for (size_t i = 0; i < VarSize; i++) {
-        Eval((ast_base *)Class->Variables[i], Instance->Locals);
-      }
-
-      Instance->Base.MethodEnv = Class->Base.MethodEnv;
-      return (object *)Instance;
-    } else {
-      return NewError("class %s does not exist", Expr->Class->Value);
-    }
-  } break;
-
+  case AST_IF_EXPRESSION:
+    return evalIfExpression(Node, Env);
+  case AST_RETURN_STATEMENT:
+    return evalReturnStatement(Node, Env);
+  case AST_VAR_STATEMENT:
+    return evalVarStatement(Node, Env);
+  case AST_IDENTIFIER:
+    return evalIdentifier(Node, Env);
+  case AST_FUNCTION_LITERAL:
+    return evalFunctionLiteral(Node, Env);
+  case AST_FUNCTION_CALL:
+    return evalFunction(Node, Env);
+  case AST_INDEX_EXPRESSION:
+    return evalIndexExpression(Node, Env);
+  case AST_CLASS_STATEMENT:
+    return evalClassStatement(Node, Env);
+  case AST_NEW_EXPRESSION:
+    return evalNewExpression(Node, Env);
   default:
     /* TODO: @Nathan want to throw an error here? */
     return (object *)&NullObject;
+  }
+}
+
+object *evalNumber(ast_base *Node) {
+  object_number *Num = NewNumber();
+  Num->Type = ((ast_number *)Node)->Type;
+  switch (Num->Type) {
+  case NUM_INTEGER: {
+    Num->Int = ((ast_number *)Node)->Int;
+  } break;
+  case NUM_DOUBLE: {
+    Num->Dbl = ((ast_number *)Node)->Dbl;
+  } break;
+  default: {
+    assert(0);
+  } break;
+  }
+  return (object *)Num;
+}
+
+object *evalBool(ast_base *Node) {
+  object_boolean *Bool = NewBoolean();
+  Bool->Value = ((ast_boolean *)Node)->Value;
+  return (object *)Bool;
+}
+
+object *evalString(ast_base *Node) {
+  char *AstStr = ((ast_string *)Node)->Value;
+  object_string *Str = (object_string *)NewObject(
+      FLUFF_OBJECT_STRING, sizeof(object_string) + strlen(AstStr) + 1);
+  strcpy(Str->Value, AstStr);
+  return (object *)Str;
+}
+
+object *evalArrayLiteral(ast_base *Node, environment *Env) {
+  ast_array_literal *Arr = (ast_array_literal *)Node;
+  object_array *ArrObject =
+      (object_array *)NewObject(FLUFF_OBJECT_ARRAY, sizeof(object_array));
+  ArrObject->Items = evalArrayItems(Arr->Items, Env);
+  return (object *)ArrObject;
+}
+
+object *evalPrefix(ast_base *Node, environment *Env) {
+  ast_prefix_expression *Prefix = (ast_prefix_expression *)Node;
+  object *Right = Eval(Prefix->Right, Env);
+  if (Right->Type == FLUFF_OBJECT_ERROR) {
+    return Right;
+  }
+  return evalPrefixExpression(Prefix->Operation, Right);
+}
+
+object *evalInfix(ast_base *Node, environment *Env) {
+  ast_infix_expression *Infix = (ast_infix_expression *)Node;
+  if (Infix->Left->Type == AST_IDENTIFIER && Infix->Operation == TOKEN_ASSIGN) {
+    return evalInfixAssignExpression(Infix->Left, Infix->Right, Env);
+  } else if (Infix->Operation == TOKEN_DOT) {
+    return evalDotOperator(Infix->Left, Infix->Right, Env);
+  }
+
+  object *Left = Eval(Infix->Left, Env);
+  object *Right = Eval(Infix->Right, Env);
+  if (Left->Type == FLUFF_OBJECT_ERROR) {
+    return Left;
+  }
+  if (Right->Type == FLUFF_OBJECT_ERROR) {
+    return Right;
+  }
+  return evalInfixExpression(Infix->Operation, Left, Right);
+}
+
+object *evalIfExpression(ast_base *Node, environment *Env) {
+  ast_if_expression *IfExpr = (ast_if_expression *)Node;
+  object *Cond = Eval(IfExpr->Condition, Env);
+  if (Cond->Type == FLUFF_OBJECT_ERROR) {
+    return Cond;
+  }
+  if (isTruthy(Cond)) {
+    return Eval(IfExpr->Consequence, Env);
+  } else if (IfExpr->Alternative) {
+    return Eval(IfExpr->Alternative, Env);
+  } else {
+    return (object *)&NullObject;
+  }
+}
+
+object *evalReturnStatement(ast_base *Node, environment *Env) {
+  object_return *Return = NewReturn();
+  object *Retval = Eval(((ast_return_statement *)Node)->Expr, Env);
+  Return->Retval = Retval;
+  return (object *)Return;
+}
+
+object *evalVarStatement(ast_base *Node, environment *Env) {
+  ast_var_statement *Stmt = (ast_var_statement *)Node;
+  object *Val = Eval(Stmt->Value, Env);
+  if (Val->Type == FLUFF_OBJECT_ERROR) {
+    return Val;
+  }
+
+  if (!FindInEnv(Env, (char *)Stmt->Name->Value)) {
+    AddToEnv(Env, (char *)Stmt->Name->Value, Val);
+  } else {
+    return NewError("variable %s already exists!", Stmt->Name->Value);
+  }
+  return (object *)&NullObject;
+}
+
+object *evalIdentifier(ast_base *Node, environment *Env) {
+  ast_identifier *Ident = (ast_identifier *)Node;
+  object *Obj = FindInEnv(Env, Ident->Value);
+  if (Obj) {
+    return Obj;
+  }
+  Obj = FindInEnv(&BuiltinEnv, Ident->Value);
+  if (Obj) {
+    return Obj;
+  } else {
+    return (object *)&NullObject;
+  }
+}
+
+object *evalFunctionLiteral(ast_base *Node, environment *Env) {
+  ast_function_literal *Fn = (ast_function_literal *)Node;
+  object_function *FnObj = NewFunction();
+  FnObj->Parameters = (ast_identifier **)Fn->Parameters;
+  FnObj->Body = (ast_block_statement *)Fn->Body;
+  FnObj->Env = Env;
+  FnObj->RecurEnvs = NULL;
+  return (object *)FnObj;
+}
+
+object *evalFunction(ast_base *Node, environment *Env) {
+  ast_function_call *Call = (ast_function_call *)Node;
+  object *Fn = Eval(Call->FunctionName, Env);
+  object **Exprs = evalExpressions(Call->Arguments, Env);
+  if (Exprs[ArraySize(Exprs) - 1]->Type == FLUFF_OBJECT_ERROR) {
+    return Exprs[ArraySize(Exprs) - 1];
+  }
+  return evalFunctionCall(Fn, Exprs);
+}
+
+object *evalIndexExpression(ast_base *Node, environment *Env) {
+  ast_index *IndexExpr = (ast_index *)Node;
+  object *IndexEval = Eval(IndexExpr->Index, Env);
+  object_number *IndexNumber = NULL;
+  object *LookupObject = NULL;
+
+  if (IndexEval->Type == FLUFF_OBJECT_ERROR) {
+    return IndexEval;
+  }
+  /* We really care that the index is actaully a number */
+  if (IndexEval->Type != FLUFF_OBJECT_NUMBER) {
+    return NewError("index is not a number, is %s",
+                    FluffObjectType[IndexNumber->Type]);
+  }
+  IndexNumber = (object_number *)IndexEval;
+  /* We shouldn't try to index with a double */
+  if (IndexNumber->Type != NUM_INTEGER) {
+    return NewError("index is not and integer");
+  }
+
+  /* Find the object we want to index into */
+  LookupObject = FindInEnv(Env, IndexExpr->Var->Value);
+  switch (LookupObject->Type) {
+  case FLUFF_OBJECT_ARRAY: {
+    object_array *Arr = (object_array *)LookupObject;
+    /* Check the bounds of the array before accessing */
+    if (IndexNumber->Int < 0 || IndexNumber->Int >= ArraySize(Arr->Items)) {
+      return NewError(
+          "attempting to access array elements out of bounds with index %d",
+          IndexNumber->Int);
+    }
+    return *Arr->Items[IndexNumber->Int];
+  } break;
+
+  default: {
+    return NewError("cannot index object of type %s",
+                    FluffObjectType[LookupObject->Type]);
+  }
+  }
+}
+
+object *evalClassStatement(ast_base *Node, environment *Env) {
+  ast_class *Class = (ast_class *)Node;
+  object_class *ClassObj =
+      (object_class *)NewObject(FLUFF_OBJECT_CLASS, sizeof(object_class));
+
+  ClassObj->Variables = NULL;
+  ClassObj->Base.MethodEnv = CreateEnvironment();
+  size_t ClassStatementsSize = ArraySize(Class->Variables);
+
+  /* Variables are split into two categories
+   * First is the functions, which can be evaluated and stored as
+   * methods right now. Second is the variables, which can be stored
+   * as their ast representations and instantiated when an object
+   * of this class is created */
+  for (size_t i = 0; i < ClassStatementsSize; i++) {
+    if (Class->Variables[i]->Value->Type == AST_FUNCTION_LITERAL) {
+      object *Method = Eval(Class->Variables[i]->Value, Env);
+      AddToEnv(ClassObj->Base.MethodEnv, Class->Variables[i]->Name->Value,
+               Method);
+    } else {
+      GCArrayPush(ClassObj->Variables, Class->Variables[i]);
+    }
+  }
+
+  /* Insert the class name into the user defined class environemnt */
+  AddToEnv(RootEnv, Class->Name->Value, (object *)ClassObj);
+  return (object *)&NullObject;
+}
+
+object *evalNewExpression(ast_base *Node, environment *Env) {
+  ast_new_expression *Expr = (ast_new_expression *)Node;
+
+  /* find the class inside our stored user defined class env */
+  object *Obj = FindInEnv(RootEnv, Expr->Class->Value);
+  object_class *Class = NULL;
+  if (Obj->Type == FLUFF_OBJECT_CLASS) {
+    Class = (object_class *)Obj;
+  }
+  if (Class) {
+    /* Instantiate the class by creating an enclosed environemnt with
+     * whatever variables have been defined */
+    object_class_instantiation *Instance =
+        (object_class_instantiation *)NewObject(
+            FLUFF_OBJECT_CLASS_INSTANTIATION,
+            sizeof(object_class_instantiation));
+    Instance->Locals = CreateEnvironment();
+
+    size_t VarSize = ArraySize(Class->Variables);
+    for (size_t i = 0; i < VarSize; i++) {
+      Eval((ast_base *)Class->Variables[i], Instance->Locals);
+    }
+
+    Instance->Base.MethodEnv = Class->Base.MethodEnv;
+    return (object *)Instance;
+  } else {
+    return NewError("class %s does not exist", Expr->Class->Value);
   }
 }
 
@@ -459,12 +499,12 @@ object *evalProgram(ast_program *Program, environment *Env) {
   for (i = 0; i < StatementsSize; i++) {
     Result = Eval(Statements[i], Env);
 
-    if (GCNeedsCleanup()) {
-      GCMarkAndSweep(RootEnv);
-    }
-
     if (Result->Type == FLUFF_OBJECT_RETURN) {
       return ((object_return *)Result)->Retval;
+    }
+
+    if (GCNeedsCleanup()) {
+      GCMarkAndSweep(RootEnv);
     }
   }
 
