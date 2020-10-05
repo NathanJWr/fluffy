@@ -32,9 +32,22 @@ int main(int argc, char **argv) {
             TOKEN_DOT, TOKEN_DOT, TOKEN_RPAREN, TOKEN_END);
   /* PARSER TESTING */
   testParser("number is 43", AST_PROGRAM, AST_IDENTIFIER, "number",
-             AST_IDENTIFIER, "is", AST_INTEGER_LITERAL, 43);
-  testParser("-20", AST_PROGRAM, AST_PREFIX_EXPRESSION, TOKEN_MINUS,
-             AST_INTEGER_LITERAL, 20);
+             AST_IDENTIFIER, "is", AST_NUMBER, 43);
+  testParser("-20", AST_PROGRAM, AST_PREFIX_EXPRESSION, TOKEN_MINUS, AST_NUMBER,
+             20);
+  testParser("var a = (!10 + 2.2) / 0;", AST_PROGRAM, AST_VAR_STATEMENT,
+             AST_IDENTIFIER, "a", AST_INFIX_EXPRESSION, TOKEN_SLASH,
+             AST_INFIX_EXPRESSION, TOKEN_PLUS, AST_PREFIX_EXPRESSION,
+             TOKEN_BANG, AST_NUMBER, 10, AST_NUMBER, 2.2, AST_NUMBER, 0);
+  testParser("if(true) { 1; } else { 0; }", AST_PROGRAM, AST_IF_EXPRESSION,
+             AST_BOOLEAN, true, AST_BLOCK_STATEMENT, AST_NUMBER, 1,
+             AST_BLOCK_STATEMENT, AST_NUMBER, 0);
+  testParser("var a = fn(b) { return b; }", AST_PROGRAM, AST_VAR_STATEMENT,
+             AST_IDENTIFIER, "a", AST_FUNCTION_LITERAL, AST_IDENTIFIER, "b",
+             AST_BLOCK_STATEMENT, AST_RETURN_STATEMENT, AST_IDENTIFIER, "b");
+  testParser("var b = a(\"hello\");", AST_PROGRAM, AST_VAR_STATEMENT,
+             AST_IDENTIFIER, "b", AST_FUNCTION_CALL, AST_IDENTIFIER, "a",
+             AST_STRING, "hello");
   printf("All tests passed.\n");
   return 0;
 }
