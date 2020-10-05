@@ -68,7 +68,7 @@ void rehashEnv(environment *OldEnv, environment *NewEnv) {
 
 void rehashAndResize(environment *Env) {
   environment NewEnv;
-  InitEnv(&NewEnv, Env->ObjectsLength * 2);
+  InitEnv(&NewEnv, Env->ObjectsLength * 2, Env->Malloc);
   rehashEnv(Env, &NewEnv);
 
   free(Env->Objects);
@@ -84,13 +84,14 @@ void possiblRehashAndResize(environment *Env) {
   }
 }
 
-void InitEnv(environment *Env, unsigned int Size) {
+void InitEnv(environment *Env, unsigned int Size, mallocFunc MallocFunc) {
   /* Note: Using power of two array sizes for faster modulus */
   unsigned int AllocSize = sizeof(object_bucket) * Size;
   Env->ObjectsLength = Size;
   Env->ObjectsExist = 0;
 
-  Env->Objects = GCMalloc(AllocSize);
+  Env->Objects = MallocFunc(AllocSize);
+  Env->Malloc = MallocFunc;
   memset(Env->Objects, 0, AllocSize);
 
   Env->Outer = NULL;
@@ -125,7 +126,40 @@ void AddToEnv(environment *Env, const char *Var, object *Obj) {
   }
 }
 
+void ReplaceInEnv(environment *Env, const char *Var, object *Item) {
+  hashed_string HashedStr = hashString(Var);
+  unsigned int Index = fastModulus(HashedStr.Hash, Env->ObjectsLength);
+  unsigned int IndexesTried = 0;
+
+  while (IndexesTried < Env->ObjectsLength &&
+         !isBucketEmpty(Env->Objects, Index)) {
+
+    if (!isBucketEmpty(Env->Objects, Index) &&
+        (HashEqual(Env->Objects[Index].Var, HashedStr))) {
+      /* Replace the old object with the new one */
+      Env->Objects[Index].Obj = Item;
+      return;
+    }
+    IndexesTried++;
+    Index++;
+
+    /* Wrap around to the start of the buffer */
+    if (Index > Env->ObjectsLength - 1) {
+      Index = 0;
+    }
+  }
+
+  /* We could not find the object to replace in the current
+   * environment, but it could be in the outer env */
+  if (Env->Outer) {
+    ReplaceInEnv(Env->Outer, Var, Item);
+  }
+}
+
 object *FindInEnv(environment *Env, const char *Var) {
+  if (Env == NULL || Var == NULL) {
+    return NULL;
+  }
   hashed_string HashedStr = hashString(Var);
   unsigned int Index = fastModulus(HashedStr.Hash, Env->ObjectsLength);
   unsigned int IndexesTried = 0;
@@ -165,7 +199,7 @@ environment *CreateEnclosedEnvironment(environment *Outer) {
 
 environment *CreateEnvironment(void) {
   environment *Env = GCMalloc(sizeof(environment));
-  InitEnv(Env, 4);
+  InitEnv(Env, 4, GCMalloc);
   return Env;
 }
 
@@ -174,41 +208,78 @@ void markEnvironment(environment *Env) {
   GCMarkAllocation(Env->Objects);
 }
 
-void markAnySubObjects(object_bucket *Bucket);
+void markObject(object *Obj);
 void markAllObjectsInEnv(environment *Env) {
   unsigned int i;
   for (i = 0; i < Env->ObjectsLength; i++) {
     if (!isBucketEmpty(Env->Objects, i)) {
       object_bucket *Bucket = &Env->Objects[i];
-      GCMarkAllocation(Bucket->Obj);
-      markAnySubObjects(Bucket);
+      markObject(Bucket->Obj);
     }
   }
 }
 
-void markAnySubObjects(object_bucket *Bucket) {
-  object *Obj = Bucket->Obj;
-  switch (Obj->Type) {
+void markArrayObject(object_array *Arr) {
+  unsigned int i;
+  unsigned int ArrLength = ArraySize(Arr->Items);
+  GCArrayMarkAllocation(Arr->Items);
+  for (i = 0; i < ArrLength; i++) {
+    markObject(*Arr->Items[i]);
+    GCMarkAllocation(Arr->Items[i]);
+  }
+}
 
-  case OBJECT_RETURN: {
+void markFunctionObject(object_function *Func) {
+  if (!GCMarked(Func->Env)) {
+    EnvironmentMark(Func->Env);
+  }
+
+  environment_linked *Env = Func->RecurEnvs;
+  while (Env) {
+    GCMarkAllocation(Env);
+    EnvironmentMark(Env->Env);
+
+    Env = Env->Next;
+  }
+}
+
+void markObject(object *Obj) {
+  GCMarkAllocation(Obj);
+
+  switch (Obj->Type) {
+  case FLUFF_OBJECT_RETURN: {
     GCMarkAllocation(((object_return *)Obj)->Retval);
   } break;
 
-  case OBJECT_FUNCTION: {
+  case FLUFF_OBJECT_FUNCTION: {
     object_function *Func = (object_function *)Obj;
-    if (!GCMarked(Func->Env)) {
-      EnvironmentMark(Func->Env);
-    }
+    markFunctionObject(Func);
   } break;
 
-  case OBJECT_ARRAY: {
+  case FLUFF_OBJECT_ARRAY: {
     object_array *Arr = (object_array *)Obj;
-    unsigned int i;
-    unsigned int ArrLength = ArraySize(Arr->Items);
-    for (i = 0; i < ArrLength; i++) {
-      GCMarkAllocation(Arr->Items[i]);
-    }
+    markArrayObject(Arr);
   } break;
+
+  case FLUFF_OBJECT_CLASS: {
+    object_class *Class = (object_class *)Obj;
+    size_t VarLength = ArraySize(Class->Variables);
+
+    /* Don't need to iterate through array and mark
+     * each item because they are allocated in the ast */
+    GCArrayMarkAllocation(Class->Variables);
+
+    EnvironmentMark(Class->Base.MethodEnv);
+  } break;
+
+  case FLUFF_OBJECT_CLASS_INSTANTIATION: {
+    object_class_instantiation *Instance = (object_class_instantiation *)Obj;
+    EnvironmentMark(Instance->Locals);
+  } break;
+
+  default: {
+    return;
+  }
   }
 }
 

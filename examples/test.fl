@@ -1,0 +1,11 @@
+var recur = fn(x) {
+    print(x);
+    var y = x + 20;
+    if (x > 0) {
+       recur(x - 1);
+    } 
+    print(y);
+}
+
+recur(100);
+

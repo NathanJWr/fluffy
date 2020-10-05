@@ -14,6 +14,9 @@
   X(AST_RETURN_STATEMENT)                                                      \
   X(AST_STRING)                                                                \
   X(AST_ARRAY_LITERAL)                                                         \
+  X(AST_INDEX_EXPRESSION)                                                      \
+  X(AST_CLASS_STATEMENT)                                                       \
+  X(AST_NEW_EXPRESSION)                                                        \
   XX(AST_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -28,12 +31,17 @@ const char *AstType[] = {AST_TYPE_LIST};
 #undef X
 #undef XX
 
-typedef struct {
+typedef struct ast_base {
+#ifdef DEBUG_TYPES
+  ast_type Type; /* Type of the "actual" ast node */
+#else
   unsigned char Type; /* Type of the "actual" ast node */
+#endif
+
   unsigned char Size; /* Size of the "actual" ast node */
 } ast_base;
 
-typedef struct {
+typedef struct ast_program {
   ast_base Base;
 
   ast_base **Statements;
@@ -44,6 +52,11 @@ typedef struct {
 
   const char *Value;
 } ast_identifier;
+
+typedef enum {
+  NUM_INTEGER,
+  NUM_DOUBLE,
+} num_type;
 
 typedef struct {
   ast_base Base;
@@ -64,7 +77,7 @@ typedef struct {
 typedef struct {
   ast_base Base;
 
-  token_type Operation;
+  fluff_token_type Operation;
   ast_base *Right;
 } ast_prefix_expression;
 
@@ -92,7 +105,7 @@ typedef struct {
 typedef struct {
   ast_base Base;
 
-  token_type Operation;
+  fluff_token_type Operation;
   ast_base *Left;
   ast_base *Right;
 } ast_infix_expression;
@@ -114,6 +127,19 @@ typedef struct {
 typedef struct {
   ast_base Base;
 
+  ast_identifier *Name;
+  ast_var_statement **Variables;
+} ast_class;
+
+typedef struct {
+  ast_base Base;
+
+  ast_identifier *Class;
+} ast_new_expression;
+
+typedef struct {
+  ast_base Base;
+
   ast_base *Expr;
 } ast_return_statement;
 
@@ -128,3 +154,10 @@ typedef struct {
 
   ast_base **Items; /* stretchy array */
 } ast_array_literal;
+
+typedef struct {
+  ast_base Base;
+
+  ast_identifier *Var;
+  ast_base *Index;
+} ast_index;

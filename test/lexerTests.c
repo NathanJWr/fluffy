@@ -7,7 +7,7 @@ void testLexer(const char *str, ...) {
   lexer Lexer;
   unsigned int StringStoreSize = 0x10000;
   char *StringStore = malloc(StringStoreSize);
-  token_type type, expectedType;
+  fluff_token_type type, expectedType;
   int i = 0;
   char *expectedString;
   long expectedInt;
@@ -24,10 +24,10 @@ void testLexer(const char *str, ...) {
   printLog(debugLine, 1);
   printLog("================================", 0);
   while (1) {
-    expectedType = va_arg(expectedTypes, token_type);
+    expectedType = va_arg(expectedTypes, fluff_token_type);
     type = NextToken(&Lexer);
-    sprintf(debugLine, "  [%2d] : %s ? %s", i + 1, TokenType[expectedType],
-            TokenType[type]);
+    sprintf(debugLine, "  [%2d] : %s ? %s", i + 1, FluffTokenType[expectedType],
+            FluffTokenType[type]);
     printLog(debugLine, 1);
     assert(type == expectedType);
     switch (expectedType) {

@@ -1,0 +1,7 @@
+class Test {
+      var a = 1;
+      var add = fn(b) { a = a + b; return(a); }
+}
+
+var test = new Test;
+print(test.add(10));

@@ -3,7 +3,24 @@ object *NewObject(object_type Type, unsigned int Size) {
   Obj->Type = Type;
   Obj->Size = Size;
 
+  switch (Type) {
+  case FLUFF_OBJECT_STRING: {
+    Obj->MethodEnv = GetObjectStringEnv();
+  } break;
+  case FLUFF_OBJECT_ARRAY: {
+    Obj->MethodEnv = GetObjectArrayEnv();
+  } break;
+  default: {
+    Obj->MethodEnv = NULL;
+  }
+  }
   return Obj;
+}
+
+object *NewStringCopy(const char *Str) {
+  object_string *NewStr = NewString(strlen(Str) + 1);
+  strcpy(NewStr->Value, Str);
+  return (object *)NewStr;
 }
 
 object *NewError(const char *Message, ...) {
@@ -14,7 +31,7 @@ object *NewError(const char *Message, ...) {
   va_start(args2, Message);
 
   StringSize = vsnprintf(NULL, 0, Message, args1);
-  Err = (object_error *)NewObject(OBJECT_ERROR,
+  Err = (object_error *)NewObject(FLUFF_OBJECT_ERROR,
                                   sizeof(object_error) + StringSize + 1);
 
   vsprintf(Err->Message, Message, args2);
@@ -26,12 +43,12 @@ object *NewError(const char *Message, ...) {
 void PrintObject(object *Obj) {
   switch (Obj->Type) {
 
-  case OBJECT_NUMBER: {
+  case FLUFF_OBJECT_NUMBER: {
     switch (((object_number *)Obj)->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       printf("%ld", ((object_number *)Obj)->Int);
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       printf("%lf", ((object_number *)Obj)->Dbl);
     } break;
     default: {
@@ -40,36 +57,36 @@ void PrintObject(object *Obj) {
     }
   } break;
 
-  case OBJECT_BOOLEAN: {
+  case FLUFF_OBJECT_BOOLEAN: {
     (((object_boolean *)Obj)->Value) ? printf("true") : printf("false");
   } break;
 
-  case OBJECT_STRING: {
+  case FLUFF_OBJECT_STRING: {
     printf("%s", ((object_string *)Obj)->Value);
   } break;
 
-  case OBJECT_ARRAY: {
+  case FLUFF_OBJECT_ARRAY: {
     unsigned int i;
     object_array *Arr = (object_array *)Obj;
     unsigned int ArrLength = ArraySize(Arr->Items);
     printf("[");
     for (i = 0; i < ArrLength - 1; i++) {
-      PrintObject(Arr->Items[i]);
+      PrintObject(*Arr->Items[i]);
       printf(", ");
     }
-    PrintObject(Arr->Items[i]);
+    PrintObject(*Arr->Items[i]);
     printf("]");
   } break;
 
-  case OBJECT_NULL: {
+  case FLUFF_OBJECT_NULL: {
     printf("NULL");
   } break;
 
-  case OBJECT_ERROR: {
+  case FLUFF_OBJECT_ERROR: {
     printf("Error: %s", ((object_error *)Obj)->Message);
   } break;
 
-  case OBJECT_FUNCTION: {
+  case FLUFF_OBJECT_FUNCTION: {
     unsigned int i;
     object_function *Fn = (object_function *)Obj;
     printf("fn(");

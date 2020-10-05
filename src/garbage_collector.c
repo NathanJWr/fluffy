@@ -2,24 +2,45 @@ typedef struct gc_alloc_info {
   struct gc_alloc_info *Next;
   struct gc_alloc_info *Prev;
 
+  unsigned int Size;
   unsigned char Mark;
 } gc_alloc_info;
 
 static gc_alloc_info *GCHead = NULL;
+static size_t AllocationsSinceSweep = 0;
+void GCRemoveNode(gc_alloc_info *Node);
 
-void *GCMalloc(unsigned int Size) {
+bool GCNeedsCleanup() { return (AllocationsSinceSweep > 50); }
+
+void *GCMalloc(size_t Size) {
   gc_alloc_info *Info = malloc(sizeof(gc_alloc_info) + Size);
   Info->Next = NULL;
   Info->Prev = NULL;
   Info->Mark = 0;
+  Info->Size = Size;
 
   if (GCHead) {
     Info->Next = GCHead;
     GCHead->Prev = Info;
   }
   GCHead = Info;
+  AllocationsSinceSweep++;
 
   return Info + 1;
+}
+
+void *GCRealloc(void *Allocation, unsigned int Size) {
+  gc_alloc_info *Info =
+      (gc_alloc_info *)((char *)Allocation - sizeof(gc_alloc_info));
+  char *NewAllocation = GCMalloc(Size);
+  gc_alloc_info *NewInfo =
+      (gc_alloc_info *)(NewAllocation - sizeof(gc_alloc_info));
+  if (NewInfo) {
+    memcpy(NewInfo + 1, Info + 1, Info->Size);
+    GCRemoveNode(Info);
+    return NewInfo + 1;
+  }
+  return NULL;
 }
 
 void GCMarkAllocation(void *Allocation) {
@@ -66,7 +87,20 @@ void GCSweep(void) {
   }
 }
 
-void GCMarkAndSweep(environment *Env) {
-  EnvironmentMark(Env);
+size_t debugGetGCAllocationSize() {
+  gc_alloc_info *Head = GCHead;
+  size_t Size = 0;
+  while (Head) {
+    Size += Head->Size;
+    Head = Head->Next;
+  }
+  return Size;
+}
+
+void GCMarkAndSweep(environment *RootEnv) {
+  AllocationsSinceSweep = 0;
+  printf("GC Allocated: %zu bytes\n", debugGetGCAllocationSize());
+  EnvironmentMark(RootEnv);
   GCSweep();
+  printf("GC Allocated After Sweep: %zu bytes\n", debugGetGCAllocationSize());
 }

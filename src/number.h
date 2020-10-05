@@ -9,8 +9,3 @@
 #ifndef abs
 #define abs(a) (((a) < 0) ? (-a) : (a))
 #endif
-
-typedef enum {
-  num_integer,
-  num_double,
-} num_type;

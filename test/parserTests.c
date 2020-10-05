@@ -33,7 +33,7 @@ void readBlock(ast_base *base, va_list expectedTypes, int tabs) {
   long expectedInt;
   double expectedDbl, delta, epsilon = __DBL_EPSILON__;
   bool expectedBool;
-  token_type expectedToken;
+  fluff_token_type expectedToken;
   ast_type expectedType;
   expectedType = va_arg(expectedTypes, ast_type);
   sprintf(debugLine, "  [%d] : %s ? %s", tabs, AstType[expectedType],
@@ -94,9 +94,9 @@ void readBlock(ast_base *base, va_list expectedTypes, int tabs) {
   } break;
   case AST_PREFIX_EXPRESSION: {
     ast_prefix_expression *prefix = (ast_prefix_expression *)base;
-    expectedToken = va_arg(expectedTypes, token_type);
-    sprintf(debugLine, "   | %s ? %s", TokenType[expectedToken],
-            TokenType[prefix->Operation]);
+    expectedToken = va_arg(expectedTypes, fluff_token_type);
+    sprintf(debugLine, "   | %s ? %s", FluffTokenType[expectedToken],
+            FluffTokenType[prefix->Operation]);
     printLog(debugLine, 1);
     assert(expectedToken == prefix->Operation);
     readBlock(prefix->Right, expectedTypes, tabs + 1);

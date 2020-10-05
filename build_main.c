@@ -50,5 +50,8 @@
 #include "src/object_string.c"
 #include "src/object_array.c"
 #include "src/evaluate.c"
-#include "src/repl.c"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+#include "src/main.c"

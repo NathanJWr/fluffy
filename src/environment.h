@@ -1,3 +1,6 @@
+struct object;
+typedef struct object object;
+
 typedef struct {
   const char *Str;
   size_t Hash;
@@ -9,16 +12,19 @@ typedef struct {
   object *Obj;
 } object_bucket;
 
+typedef void *(*mallocFunc)(size_t);
 typedef struct environment {
   object_bucket *Objects;
   unsigned int ObjectsLength;
   unsigned int ObjectsExist;
 
+  mallocFunc Malloc;
   struct environment *Outer;
 } environment;
 
-void InitEnv(environment *Env, unsigned int Size);
+void InitEnv(environment *Env, unsigned int Size, mallocFunc MallocFunc);
 void AddToEnv(environment *Env, const char *Var, object *Obj);
+void ReplaceInEnv(environment *Env, const char *Var, object *Item);
 
 environment *CreateEnvironment(void);
 environment *CreateEnclosedEnvironment(environment *Outer);
