@@ -39,6 +39,9 @@ int main(int argc, char **argv) {
              AST_IDENTIFIER, "a", AST_INFIX_EXPRESSION, TOKEN_SLASH,
              AST_INFIX_EXPRESSION, TOKEN_PLUS, AST_PREFIX_EXPRESSION,
              TOKEN_BANG, AST_NUMBER, 10, AST_NUMBER, 2.2, AST_NUMBER, 0);
+  testParser("if(true) { 1; } else { 0; }", AST_PROGRAM, AST_IF_EXPRESSION,
+             AST_BOOLEAN, true, AST_BLOCK_STATEMENT, AST_NUMBER, 1,
+             AST_BLOCK_STATEMENT, AST_NUMBER, 0);
   printf("All tests passed.\n");
   return 0;
 }

@@ -66,13 +66,13 @@ void readBlock(ast_base *base, va_list expectedTypes, int tabs) {
   case AST_NUMBER: {
     ast_number *number = (ast_number *)base;
     switch (number->Type) {
-    case num_integer: {
+    case NUM_INTEGER: {
       expectedInt = va_arg(expectedTypes, long);
       sprintf(debugLine, "   | %ld ? %ld", expectedInt, number->Int);
       printLog(debugLine, 1);
       assert(expectedInt == number->Int);
     } break;
-    case num_double: {
+    case NUM_DOUBLE: {
       expectedDbl = va_arg(expectedTypes, double);
       delta = abs(expectedDbl - number->Dbl);
       sprintf(debugLine, "   | %lf ? %lf", expectedDbl, number->Dbl);
@@ -103,9 +103,9 @@ void readBlock(ast_base *base, va_list expectedTypes, int tabs) {
   } break;
   case AST_INFIX_EXPRESSION: {
     ast_infix_expression *infix = (ast_infix_expression *)base;
-    expectedToken = va_arg(expectedTypes, token_type);
-    sprintf(debugLine, "   | %s ? %s", TokenType[expectedToken],
-            TokenType[infix->Operation]);
+    expectedToken = va_arg(expectedTypes, fluff_token_type);
+    sprintf(debugLine, "   | %s ? %s", FluffTokenType[expectedToken],
+            FluffTokenType[infix->Operation]);
     printLog(debugLine, 1);
     assert(expectedToken == infix->Operation);
     readBlock(infix->Left, expectedTypes, tabs + 1);
@@ -119,6 +119,19 @@ void readBlock(ast_base *base, va_list expectedTypes, int tabs) {
   case AST_RETURN_STATEMENT: {
     ast_return_statement *ret = (ast_return_statement *)base;
     readBlock(ret->Expr, expectedTypes, tabs + 1);
+  } break;
+  case AST_IF_EXPRESSION: {
+    ast_if_expression *ifst = (ast_if_expression *)base;
+    readBlock(ifst->Condition, expectedTypes, tabs + 1);
+    readBlock(ifst->Consequence, expectedTypes, tabs + 1);
+    readBlock(ifst->Alternative, expectedTypes, tabs + 1);
+  } break;
+  case AST_BLOCK_STATEMENT: {
+    ast_block_statement *block = (ast_block_statement *)base;
+    int i, len = ArraySize(block->Statements);
+    for (i = 0; i < len; i++) {
+      readBlock(block->Statements[i], expectedTypes, tabs + 1);
+    }
   } break;
   default: {
     assert(0);
