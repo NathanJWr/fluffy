@@ -69,7 +69,7 @@ char *DuplicateStringWithGC(char *Str);
 
 void EvalInit(environment *Root) {
   /* Create a builtin function table */
-  InitEnv(&BuiltinEnv, 16, malloc);
+  InitEnv(&BuiltinEnv, 16, malloc, free);
   AddToEnv(&BuiltinEnv, "print", (object *)&BuiltinPrint);
   AddToEnv(&BuiltinEnv, "type", (object *)&BuiltinType);
 

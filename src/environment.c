@@ -57,7 +57,7 @@ void findSpotForKey(object_bucket *Objects, object_bucket Item,
 void rehashEnv(environment *OldEnv, environment *NewEnv) {
   unsigned int i;
   for (i = 0; i < OldEnv->ObjectsLength; i++) {
-    if (OldEnv->Objects[i].ProbeSequenceLength != -1) {
+    if (OldEnv->Objects[i].ProbeSequenceLength != 0) {
       hashed_string Var = OldEnv->Objects[i].Var;
       object *Obj = OldEnv->Objects[i].Obj;
 
@@ -68,10 +68,12 @@ void rehashEnv(environment *OldEnv, environment *NewEnv) {
 
 void rehashAndResize(environment *Env) {
   environment NewEnv;
-  InitEnv(&NewEnv, Env->ObjectsLength * 2, Env->Malloc);
+  InitEnv(&NewEnv, Env->ObjectsLength * 2, Env->Malloc, Env->Free);
   rehashEnv(Env, &NewEnv);
 
-  free(Env->Objects);
+  if (Env->Free) {
+    Env->Free(Env->Objects);
+  }
   Env->Objects = NewEnv.Objects;
   Env->ObjectsExist = NewEnv.ObjectsExist;
   Env->ObjectsLength = NewEnv.ObjectsLength;
@@ -84,7 +86,8 @@ void possiblRehashAndResize(environment *Env) {
   }
 }
 
-void InitEnv(environment *Env, unsigned int Size, mallocFunc MallocFunc) {
+void InitEnv(environment *Env, unsigned int Size, mallocFunc MallocFunc,
+             freeFunc FreeFunc) {
   /* Note: Using power of two array sizes for faster modulus */
   unsigned int AllocSize = sizeof(object_bucket) * Size;
   Env->ObjectsLength = Size;
@@ -199,7 +202,7 @@ environment *CreateEnclosedEnvironment(environment *Outer) {
 
 environment *CreateEnvironment(void) {
   environment *Env = GCMalloc(sizeof(environment));
-  InitEnv(Env, 4, GCMalloc);
+  InitEnv(Env, 4, GCMalloc, NULL);
   return Env;
 }
 
@@ -248,7 +251,7 @@ void markObject(object *Obj) {
 
   switch (Obj->Type) {
   case FLUFF_OBJECT_RETURN: {
-    GCMarkAllocation(((object_return *)Obj)->Retval);
+    markObject(((object_return *)Obj)->Retval);
   } break;
 
   case FLUFF_OBJECT_FUNCTION: {
