@@ -1,30 +1,6 @@
-static object_null NullObject = {
-    .Base.Type = FLUFF_OBJECT_NULL,
-    .Base.Size = 0,
-};
-
 static environment BuiltinEnv;
 static executing_block *HeadExecBlock;
 static environment *RootEnv;
-
-object *builtinPrint(object **Args) {
-  if (ArraySize(Args) == 1) {
-    PrintObject(Args[0]);
-    printf("\n");
-  }
-  return (object *)&NullObject;
-}
-
-object *builtinType(object **Args) {
-  if (ArraySize(Args) == 1) {
-    return NewStringCopy(FluffObjectType[Args[0]->Type]);
-  }
-  return NewError("invalid number of arguments. expected 1 and received %d",
-                  ArraySize(Args));
-}
-
-STATIC_BUILTIN_FUNCTION_VARIABLE(BuiltinPrint, builtinPrint);
-STATIC_BUILTIN_FUNCTION_VARIABLE(BuiltinType, builtinType);
 
 /* TODO: switch statements default to NULL. Implement some kind of error
  * messages */
@@ -87,8 +63,7 @@ char *DuplicateStringWithGC(char *Str);
 void EvalInit(environment *Root) {
   /* Create a builtin function table */
   InitEnv(&BuiltinEnv, 16, malloc, free);
-  AddToEnv(&BuiltinEnv, "print", (object *)&BuiltinPrint);
-  AddToEnv(&BuiltinEnv, "type", (object *)&BuiltinType);
+  AddToEnv(&BuiltinEnv, "System", (object *)GetObjectSystemClass());
 
   InitObjectMethodEnvs();
 
@@ -97,7 +72,7 @@ void EvalInit(environment *Root) {
 }
 
 object *wrapReturnVal(object *Ret, executing_block *ExecBlock) {
-  if (Ret->Type != FLUFF_OBJECT_NULL)
+  if (Ret && Ret->Type != FLUFF_OBJECT_NULL)
     ArrayPush(ExecBlock->InFlightObjects, Ret);
   return Ret;
 }
@@ -372,8 +347,13 @@ object *evalNewExpression(ast_base *Node, environment *Env,
   /* find the class inside our stored user defined class env */
   object *Obj = FindInEnv(RootEnv, Expr->Class->Value);
   object_class *Class = NULL;
-  if (Obj->Type == FLUFF_OBJECT_CLASS) {
+  if (Obj && Obj->Type == FLUFF_OBJECT_CLASS) {
     Class = (object_class *)Obj;
+  } else {
+    Obj = FindInEnv(&BuiltinEnv, Expr->Class->Value);
+    if (Obj && Obj->Type == FLUFF_OBJECT_CLASS) {
+      Class = (object_class *)Obj;
+    }
   }
   if (Class) {
     /* Instantiate the class by creating an enclosed environemnt with

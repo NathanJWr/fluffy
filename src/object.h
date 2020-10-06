@@ -10,6 +10,7 @@
   X(FLUFF_OBJECT_BUILTIN)                                                      \
   X(FLUFF_OBJECT_METHOD)                                                       \
   X(FLUFF_OBJECT_CLASS)                                                        \
+  X(FLUFF_OBJECT_BUILTIN_CLASS)                                                \
   X(FLUFF_OBJECT_CLASS_INSTANTIATION)                                          \
   XX(OJECT_TYPE_LIST_COUNT)
 
@@ -29,6 +30,7 @@ const char *FluffObjectType[] = {FLUFF_OBJECT_TYPE_LIST};
 struct object;
 typedef struct object object;
 typedef object *(*object_method_function)(object *This, object **Args);
+
 
 struct environment;
 typedef struct {
@@ -155,3 +157,9 @@ void PrintObject(object *Obj);
   ((object_string *)NewObject(FLUFF_OBJECT_STRING,                             \
                               sizeof(object_string) + StrSize))
 object *NewStringCopy(const char *Str);
+
+static object_null NullObject = {
+    .Base.Type = FLUFF_OBJECT_NULL,
+    .Base.Size = 0,
+};
+
