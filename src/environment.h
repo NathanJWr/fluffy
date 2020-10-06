@@ -13,16 +13,19 @@ typedef struct {
 } object_bucket;
 
 typedef void *(*mallocFunc)(size_t);
+typedef void (*freeFunc)(void *);
 typedef struct environment {
   object_bucket *Objects;
   unsigned int ObjectsLength;
   unsigned int ObjectsExist;
 
   mallocFunc Malloc;
+  freeFunc Free;
   struct environment *Outer;
 } environment;
 
-void InitEnv(environment *Env, unsigned int Size, mallocFunc MallocFunc);
+void InitEnv(environment *Env, unsigned int Size, mallocFunc MallocFunc,
+             freeFunc FreeFunc);
 void AddToEnv(environment *Env, const char *Var, object *Obj);
 void ReplaceInEnv(environment *Env, const char *Var, object *Item);
 

@@ -8,7 +8,7 @@ STATIC_BUILTIN_FUNCTION_VARIABLE(FluffMethodArrayReverse,
                                  fluffMethodArrayReverse);
 
 void InitObjectArrayEnv() {
-  InitEnv(&ObjectArrayEnv, 16, malloc);
+  InitEnv(&ObjectArrayEnv, 16, malloc, free);
   AddToEnv(&ObjectArrayEnv, "length", (object *)&FluffMethodArrayLength);
   AddToEnv(&ObjectArrayEnv, "reverse", (object *)&FluffMethodArrayReverse);
 }

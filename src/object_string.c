@@ -8,7 +8,7 @@ STATIC_BUILTIN_FUNCTION_VARIABLE(FluffMethodStringReverse,
                                  fluffMethodStringReverse);
 
 void InitObjectStringEnv() {
-  InitEnv(&StringMethodEnv, 16, malloc);
+  InitEnv(&StringMethodEnv, 16, malloc, free);
   AddToEnv(&StringMethodEnv, "length", (object *)&FluffMethodStringLength);
   AddToEnv(&StringMethodEnv, "reverse", (object *)&FluffMethodStringReverse);
 }

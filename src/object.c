@@ -1,5 +1,6 @@
 object *NewObject(object_type Type, unsigned int Size) {
   object *Obj = GCMalloc(Size);
+  memset(Obj, 0, Size);
   Obj->Type = Type;
   Obj->Size = Size;
 

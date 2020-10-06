@@ -10,7 +10,7 @@ static gc_alloc_info *GCHead = NULL;
 static size_t AllocationsSinceSweep = 0;
 void GCRemoveNode(gc_alloc_info *Node);
 
-bool GCNeedsCleanup() { return (AllocationsSinceSweep > 50); }
+bool GCNeedsCleanup() { return (AllocationsSinceSweep > 1); }
 
 void *GCMalloc(size_t Size) {
   gc_alloc_info *Info = malloc(sizeof(gc_alloc_info) + Size);
