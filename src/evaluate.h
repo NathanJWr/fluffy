@@ -8,4 +8,11 @@ struct environment;
 typedef struct environment environment;
 
 void EvalInit(environment *Root);
-object *Eval(ast_base *Node, environment *Env);
+
+typedef struct executing_block {
+  object **InFlightObjects;
+
+  struct executing_block *Next;
+  struct executing_block *Prev;
+} executing_block;
+object *Eval(ast_base *Node, environment *Env, executing_block *ExecBlock);

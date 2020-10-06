@@ -4,6 +4,7 @@ static object_null NullObject = {
 };
 
 static environment BuiltinEnv;
+static executing_block *HeadExecBlock;
 static environment *RootEnv;
 
 object *builtinPrint(object **Args) {
@@ -27,33 +28,49 @@ STATIC_BUILTIN_FUNCTION_VARIABLE(BuiltinType, builtinType);
 
 /* TODO: switch statements default to NULL. Implement some kind of error
  * messages */
-object *evalProgram(ast_program *Program, environment *Env);
+object *evalProgram(ast_program *Program, environment *Env,
+                    executing_block *ExecBlock);
 object *evalNumber(ast_base *Node);
 object *evalBool(ast_base *Node);
 object *evalString(ast_base *Node);
-object *evalArrayLiteral(ast_base *Node, environment *Env);
-object *evalBlock(ast_block_statement *Block, environment *Env);
-object **evalExpressions(ast_base **Exprs, environment *Env);
-object ***evalArrayItems(ast_base **Items, environment *Env);
-object *evalPrefix(ast_base *Node, environment *Env);
+object *evalArrayLiteral(ast_base *Node, environment *Env,
+                         executing_block *ExecBlock);
+object *evalBlock(ast_block_statement *Block, environment *Env,
+                  executing_block *ExecBlock);
+object **evalExpressions(ast_base **Exprs, environment *Env,
+                         executing_block *ExecBlock);
+object ***evalArrayItems(ast_base **Items, environment *Env,
+                         executing_block *ExecBlock);
+object *evalPrefix(ast_base *Node, environment *Env,
+                   executing_block *ExecBlock);
 object *evalPrefixExpression(fluff_token_type Op, object *Obj);
-object *evalIfExpression(ast_base *Node, environment *Env);
-object *evalReturnStatement(ast_base *Node, environment *Env);
-object *evalVarStatement(ast_base *Node, environment *Env);
+object *evalIfExpression(ast_base *Node, environment *Env,
+                         executing_block *ExecBlock);
+object *evalReturnStatement(ast_base *Node, environment *Env,
+                            executing_block *ExecBlock);
+object *evalVarStatement(ast_base *Node, environment *Env,
+                         executing_block *ExecBlock);
 object *evalIdentifier(ast_base *Node, environment *Env);
-object *evalFunctionLiteral(ast_base *Node, environment *Env);
-object *evalFunction(ast_base *Node, environment *Env);
-object *evalIndexExpression(ast_base *Node, environment *Env);
-object *evalClassStatement(ast_base *Node, environment *Env);
-object *evalNewExpression(ast_base *Node, environment *Env);
+object *evalFunctionLiteral(ast_base *Node, environment *Env,
+                            executing_block *ExecBlock);
+object *evalFunction(ast_base *Node, environment *Env,
+                     executing_block *ExecBlock);
+object *evalIndexExpression(ast_base *Node, environment *Env,
+                            executing_block *ExecBlock);
+object *evalClassStatement(ast_base *Node, environment *Env,
+                           executing_block *ExecBlock);
+object *evalNewExpression(ast_base *Node, environment *Env,
+                          executing_block *ExecBlock);
 object *evalBangOperatorExpression(object *Ojb);
 object *evalMinusPrefixOperatorExpression(object *Obj);
-object *evalInfix(ast_base *Node, environment *Env);
+object *evalInfix(ast_base *Node, environment *Env, executing_block *ExecBlock);
 object *evalInfixExpression(fluff_token_type Op, object *Left, object *Right);
-object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env);
-object *evalFunctionCall(object *Fn, object **Exprs);
+object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env,
+                        executing_block *ExecBlock);
+object *evalFunctionCall(object *Fn, object **Exprs,
+                         executing_block *ExecBlock);
 object *evalInfixAssignExpression(ast_base *Left, ast_base *Right,
-                                  environment *Env);
+                                  environment *Env, executing_block *ExecBlock);
 object *evalNumberInfixExpression(fluff_token_type Op, object_number *Left,
                                   object_number *Right);
 object *evalStringInfixExpression(fluff_token_type Op, object_string *Left,
@@ -61,7 +78,7 @@ object *evalStringInfixExpression(fluff_token_type Op, object_string *Left,
 object *evalBooleanInfixExpression(fluff_token_type Op, object_boolean *Left,
                                    object_boolean *Right);
 bool isTruthy(object *Obj);
-object *applyFunction(object *Fn, object **Args);
+object *applyFunction(object *Fn, object **Args, executing_block *ExecBlock);
 environment *extendFnEnv(object_function *Fn, object **Args,
                          unsigned int ArgsLength);
 object *unwrapReturnValue(object *Obj);
@@ -79,42 +96,49 @@ void EvalInit(environment *Root) {
   RootEnv = Root;
 }
 
-object *Eval(ast_base *Node, environment *Env) {
+object *wrapReturnVal(object *Ret, executing_block *ExecBlock) {
+  if (Ret->Type != FLUFF_OBJECT_NULL)
+    ArrayPush(ExecBlock->InFlightObjects, Ret);
+  return Ret;
+}
+
+object *Eval(ast_base *Node, environment *Env, executing_block *ExecBlock) {
   switch (Node->Type) {
   case AST_PROGRAM:
-    return evalProgram((ast_program *)Node, Env);
+    return evalProgram((ast_program *)Node, Env, ExecBlock);
   case AST_NUMBER:
-    return evalNumber(Node);
+    return wrapReturnVal(evalNumber(Node), ExecBlock);
   case AST_BOOLEAN:
-    return evalBool(Node);
+    return wrapReturnVal(evalBool(Node), ExecBlock);
   case AST_STRING:
-    return evalString(Node);
+    return wrapReturnVal(evalString(Node), ExecBlock);
   case AST_ARRAY_LITERAL:
-    return evalArrayLiteral(Node, Env);
+    return wrapReturnVal(evalArrayLiteral(Node, Env, ExecBlock), ExecBlock);
   case AST_PREFIX_EXPRESSION:
-    return evalPrefix(Node, Env);
+    return wrapReturnVal(evalPrefix(Node, Env, ExecBlock), ExecBlock);
   case AST_INFIX_EXPRESSION:
-    return evalInfix(Node, Env);
+    return wrapReturnVal(evalInfix(Node, Env, ExecBlock), ExecBlock);
   case AST_BLOCK_STATEMENT:
-    return evalBlock((ast_block_statement *)Node, Env);
+    return wrapReturnVal(evalBlock((ast_block_statement *)Node, Env, ExecBlock),
+                         ExecBlock);
   case AST_IF_EXPRESSION:
-    return evalIfExpression(Node, Env);
+    return evalIfExpression(Node, Env, ExecBlock);
   case AST_RETURN_STATEMENT:
-    return evalReturnStatement(Node, Env);
+    return wrapReturnVal(evalReturnStatement(Node, Env, ExecBlock), ExecBlock);
   case AST_VAR_STATEMENT:
-    return evalVarStatement(Node, Env);
+    return evalVarStatement(Node, Env, ExecBlock);
   case AST_IDENTIFIER:
     return evalIdentifier(Node, Env);
   case AST_FUNCTION_LITERAL:
-    return evalFunctionLiteral(Node, Env);
+    return wrapReturnVal(evalFunctionLiteral(Node, Env, ExecBlock), ExecBlock);
   case AST_FUNCTION_CALL:
-    return evalFunction(Node, Env);
+    return wrapReturnVal(evalFunction(Node, Env, ExecBlock), ExecBlock);
   case AST_INDEX_EXPRESSION:
-    return evalIndexExpression(Node, Env);
+    return evalIndexExpression(Node, Env, ExecBlock);
   case AST_CLASS_STATEMENT:
-    return evalClassStatement(Node, Env);
+    return evalClassStatement(Node, Env, ExecBlock);
   case AST_NEW_EXPRESSION:
-    return evalNewExpression(Node, Env);
+    return wrapReturnVal(evalNewExpression(Node, Env, ExecBlock), ExecBlock);
   default:
     /* TODO: @Nathan want to throw an error here? */
     return (object *)&NullObject;
@@ -152,33 +176,36 @@ object *evalString(ast_base *Node) {
   return (object *)Str;
 }
 
-object *evalArrayLiteral(ast_base *Node, environment *Env) {
+object *evalArrayLiteral(ast_base *Node, environment *Env,
+                         executing_block *ExecBlock) {
   ast_array_literal *Arr = (ast_array_literal *)Node;
   object_array *ArrObject =
       (object_array *)NewObject(FLUFF_OBJECT_ARRAY, sizeof(object_array));
-  ArrObject->Items = evalArrayItems(Arr->Items, Env);
+  ArrObject->Items = evalArrayItems(Arr->Items, Env, ExecBlock);
   return (object *)ArrObject;
 }
 
-object *evalPrefix(ast_base *Node, environment *Env) {
+object *evalPrefix(ast_base *Node, environment *Env,
+                   executing_block *ExecBlock) {
   ast_prefix_expression *Prefix = (ast_prefix_expression *)Node;
-  object *Right = Eval(Prefix->Right, Env);
+  object *Right = Eval(Prefix->Right, Env, ExecBlock);
   if (Right->Type == FLUFF_OBJECT_ERROR) {
     return Right;
   }
   return evalPrefixExpression(Prefix->Operation, Right);
 }
 
-object *evalInfix(ast_base *Node, environment *Env) {
+object *evalInfix(ast_base *Node, environment *Env,
+                  executing_block *ExecBlock) {
   ast_infix_expression *Infix = (ast_infix_expression *)Node;
   if (Infix->Left->Type == AST_IDENTIFIER && Infix->Operation == TOKEN_ASSIGN) {
-    return evalInfixAssignExpression(Infix->Left, Infix->Right, Env);
+    return evalInfixAssignExpression(Infix->Left, Infix->Right, Env, ExecBlock);
   } else if (Infix->Operation == TOKEN_DOT) {
-    return evalDotOperator(Infix->Left, Infix->Right, Env);
+    return evalDotOperator(Infix->Left, Infix->Right, Env, ExecBlock);
   }
 
-  object *Left = Eval(Infix->Left, Env);
-  object *Right = Eval(Infix->Right, Env);
+  object *Left = Eval(Infix->Left, Env, ExecBlock);
+  object *Right = Eval(Infix->Right, Env, ExecBlock);
   if (Left->Type == FLUFF_OBJECT_ERROR) {
     return Left;
   }
@@ -188,31 +215,36 @@ object *evalInfix(ast_base *Node, environment *Env) {
   return evalInfixExpression(Infix->Operation, Left, Right);
 }
 
-object *evalIfExpression(ast_base *Node, environment *Env) {
+object *evalIfExpression(ast_base *Node, environment *Env,
+                         executing_block *ExecBlock) {
   ast_if_expression *IfExpr = (ast_if_expression *)Node;
-  object *Cond = Eval(IfExpr->Condition, Env);
+  object *Cond = Eval(IfExpr->Condition, Env, ExecBlock);
   if (Cond->Type == FLUFF_OBJECT_ERROR) {
     return Cond;
   }
   if (isTruthy(Cond)) {
-    return Eval(IfExpr->Consequence, Env);
+    return Eval(IfExpr->Consequence, Env, ExecBlock);
   } else if (IfExpr->Alternative) {
-    return Eval(IfExpr->Alternative, Env);
+    return Eval(IfExpr->Alternative, Env, ExecBlock);
   } else {
     return (object *)&NullObject;
   }
 }
 
-object *evalReturnStatement(ast_base *Node, environment *Env) {
-  object_return *Return = NewReturn();
-  object *Retval = Eval(((ast_return_statement *)Node)->Expr, Env);
+object *evalReturnStatement(ast_base *Node, environment *Env,
+                            executing_block *ExecBlock) {
+  object_return *Return =
+      (object_return *)wrapReturnVal((object *)NewReturn(), ExecBlock);
+
+  object *Retval = Eval(((ast_return_statement *)Node)->Expr, Env, ExecBlock);
   Return->Retval = Retval;
   return (object *)Return;
 }
 
-object *evalVarStatement(ast_base *Node, environment *Env) {
+object *evalVarStatement(ast_base *Node, environment *Env,
+                         executing_block *ExecBlock) {
   ast_var_statement *Stmt = (ast_var_statement *)Node;
-  object *Val = Eval(Stmt->Value, Env);
+  object *Val = Eval(Stmt->Value, Env, ExecBlock);
   if (Val->Type == FLUFF_OBJECT_ERROR) {
     return Val;
   }
@@ -239,7 +271,8 @@ object *evalIdentifier(ast_base *Node, environment *Env) {
   }
 }
 
-object *evalFunctionLiteral(ast_base *Node, environment *Env) {
+object *evalFunctionLiteral(ast_base *Node, environment *Env,
+                            executing_block *ExecBlock) {
   ast_function_literal *Fn = (ast_function_literal *)Node;
   object_function *FnObj = NewFunction();
   FnObj->Parameters = (ast_identifier **)Fn->Parameters;
@@ -249,19 +282,21 @@ object *evalFunctionLiteral(ast_base *Node, environment *Env) {
   return (object *)FnObj;
 }
 
-object *evalFunction(ast_base *Node, environment *Env) {
+object *evalFunction(ast_base *Node, environment *Env,
+                     executing_block *ExecBlock) {
   ast_function_call *Call = (ast_function_call *)Node;
-  object *Fn = Eval(Call->FunctionName, Env);
-  object **Exprs = evalExpressions(Call->Arguments, Env);
+  object *Fn = Eval(Call->FunctionName, Env, ExecBlock);
+  object **Exprs = evalExpressions(Call->Arguments, Env, ExecBlock);
   if (Exprs[ArraySize(Exprs) - 1]->Type == FLUFF_OBJECT_ERROR) {
     return Exprs[ArraySize(Exprs) - 1];
   }
-  return evalFunctionCall(Fn, Exprs);
+  return evalFunctionCall(Fn, Exprs, ExecBlock);
 }
 
-object *evalIndexExpression(ast_base *Node, environment *Env) {
+object *evalIndexExpression(ast_base *Node, environment *Env,
+                            executing_block *ExecBlock) {
   ast_index *IndexExpr = (ast_index *)Node;
-  object *IndexEval = Eval(IndexExpr->Index, Env);
+  object *IndexEval = Eval(IndexExpr->Index, Env, ExecBlock);
   object_number *IndexNumber = NULL;
   object *LookupObject = NULL;
 
@@ -300,7 +335,8 @@ object *evalIndexExpression(ast_base *Node, environment *Env) {
   }
 }
 
-object *evalClassStatement(ast_base *Node, environment *Env) {
+object *evalClassStatement(ast_base *Node, environment *Env,
+                           executing_block *ExecBlock) {
   ast_class *Class = (ast_class *)Node;
   object_class *ClassObj =
       (object_class *)NewObject(FLUFF_OBJECT_CLASS, sizeof(object_class));
@@ -316,7 +352,7 @@ object *evalClassStatement(ast_base *Node, environment *Env) {
    * of this class is created */
   for (size_t i = 0; i < ClassStatementsSize; i++) {
     if (Class->Variables[i]->Value->Type == AST_FUNCTION_LITERAL) {
-      object *Method = Eval(Class->Variables[i]->Value, Env);
+      object *Method = Eval(Class->Variables[i]->Value, Env, ExecBlock);
       AddToEnv(ClassObj->Base.MethodEnv, Class->Variables[i]->Name->Value,
                Method);
     } else {
@@ -329,7 +365,8 @@ object *evalClassStatement(ast_base *Node, environment *Env) {
   return (object *)&NullObject;
 }
 
-object *evalNewExpression(ast_base *Node, environment *Env) {
+object *evalNewExpression(ast_base *Node, environment *Env,
+                          executing_block *ExecBlock) {
   ast_new_expression *Expr = (ast_new_expression *)Node;
 
   /* find the class inside our stored user defined class env */
@@ -349,7 +386,7 @@ object *evalNewExpression(ast_base *Node, environment *Env) {
 
     size_t VarSize = ArraySize(Class->Variables);
     for (size_t i = 0; i < VarSize; i++) {
-      Eval((ast_base *)Class->Variables[i], Instance->Locals);
+      Eval((ast_base *)Class->Variables[i], Instance->Locals, ExecBlock);
     }
 
     Instance->Base.MethodEnv = Class->Base.MethodEnv;
@@ -362,11 +399,12 @@ object *evalNewExpression(ast_base *Node, environment *Env) {
 /* Standard way to call a function. This should be used
  * for any kind of function object and it's object arguments.
  * This will free the array of object arguments Exprs */
-object *evalFunctionCall(object *Fn, object **Exprs) {
+object *evalFunctionCall(object *Fn, object **Exprs,
+                         executing_block *ExecBlock) {
   object *RetObject = NULL;
   switch (Fn->Type) {
   case FLUFF_OBJECT_FUNCTION: {
-    RetObject = applyFunction(Fn, Exprs);
+    RetObject = applyFunction(Fn, Exprs, ExecBlock);
   } break;
   case FLUFF_OBJECT_BUILTIN: {
     object_builtin *Builtin = (object_builtin *)Fn;
@@ -380,7 +418,7 @@ object *evalFunctionCall(object *Fn, object **Exprs) {
   return RetObject;
 }
 
-object *applyFunction(object *Fn, object **Args) {
+object *applyFunction(object *Fn, object **Args, executing_block *ExecBlock) {
   object_function *Function;
   unsigned int ArgsLength;
   unsigned int ParamsLength;
@@ -418,7 +456,7 @@ object *applyFunction(object *Fn, object **Args) {
   Function->RecurEnvs = StoredExtendedEnv;
 
   /* Evaluate the function */
-  EvaluatedObject = Eval((ast_base *)Function->Body, ExtendedEnv);
+  EvaluatedObject = Eval((ast_base *)Function->Body, ExtendedEnv, ExecBlock);
   EvaluatedObject = unwrapReturnValue(EvaluatedObject);
 
   /* Remove the Extended Environmenet from the linked list */
@@ -457,13 +495,14 @@ object *unwrapReturnValue(object *Obj) {
   return Obj;
 }
 
-object **evalExpressions(ast_base **Exprs, environment *Env) {
+object **evalExpressions(ast_base **Exprs, environment *Env,
+                         executing_block *ExecBlock) {
   object **Result = NULL;
   unsigned int i;
   unsigned int ExprsLength = ArraySize(Exprs);
 
   for (i = 0; i < ExprsLength; i++) {
-    object *Evaluated = Eval(Exprs[i], Env);
+    object *Evaluated = Eval(Exprs[i], Env, ExecBlock);
     ArrayPush(Result, Evaluated);
     if (Evaluated->Type == FLUFF_OBJECT_ERROR) {
       return Result;
@@ -472,14 +511,15 @@ object **evalExpressions(ast_base **Exprs, environment *Env) {
   return Result;
 }
 
-object ***evalArrayItems(ast_base **Items, environment *Env) {
+object ***evalArrayItems(ast_base **Items, environment *Env,
+                         executing_block *ExecBlock) {
   object ***Result = NULL;
   unsigned int i;
   unsigned int ItemsLength = ArraySize(Items);
 
   for (i = 0; i < ItemsLength; i++) {
     object **EvaluatedPointer = GCMalloc(sizeof(object *));
-    *EvaluatedPointer = Eval(Items[i], Env);
+    *EvaluatedPointer = Eval(Items[i], Env, ExecBlock);
 
     GCArrayPush(Result, EvaluatedPointer);
     if ((*EvaluatedPointer)->Type == FLUFF_OBJECT_ERROR) {
@@ -490,41 +530,103 @@ object ***evalArrayItems(ast_base **Items, environment *Env) {
   return Result;
 }
 
-object *evalProgram(ast_program *Program, environment *Env) {
+void markAllExecBlocks() {
+  executing_block *Head = HeadExecBlock;
+  while (Head) {
+    size_t ArrSize = ArraySize(Head->InFlightObjects);
+    for (size_t i = 0; i < ArrSize; i++) {
+      markObject(Head->InFlightObjects[i]);
+    }
+
+    Head = Head->Next;
+  }
+}
+
+object *evalProgram(ast_program *Program, environment *Env,
+                    executing_block *ExecBlock) {
   object *Result;
   ast_base **Statements = Program->Statements;
   unsigned int StatementsSize = ArraySize(Statements);
   unsigned int i;
 
+  /* Create a new exec block and link it with previous ones */
+  executing_block *CurExecBlock = calloc(1, sizeof(executing_block));
+  if (HeadExecBlock) {
+    CurExecBlock->Next = HeadExecBlock;
+    (HeadExecBlock)->Prev = CurExecBlock;
+  }
+  HeadExecBlock = CurExecBlock;
+
   for (i = 0; i < StatementsSize; i++) {
-    Result = Eval(Statements[i], Env);
+    Result = Eval(Statements[i], Env, CurExecBlock);
 
     if (Result->Type == FLUFF_OBJECT_RETURN) {
       return ((object_return *)Result)->Retval;
     }
 
     if (GCNeedsCleanup()) {
+      markAllExecBlocks();
       GCMarkAndSweep(RootEnv);
     }
   }
 
+  /* Remove our exec block */
+  if (CurExecBlock == HeadExecBlock) {
+    HeadExecBlock = CurExecBlock->Next;
+  }
+  if (CurExecBlock->Next != NULL) {
+    CurExecBlock->Next->Prev = (HeadExecBlock)->Prev;
+  }
+  if (CurExecBlock->Prev != NULL) {
+    CurExecBlock->Prev->Next = (HeadExecBlock)->Next;
+  }
+  ArrayFree(CurExecBlock->InFlightObjects);
+  free(CurExecBlock);
+
   return Result;
 }
 
-object *evalBlock(ast_block_statement *Block, environment *Env) {
+object *evalBlock(ast_block_statement *Block, environment *Env,
+                  executing_block *ExecBlock) {
   object *Result;
   ast_base **Statements = Block->Statements;
   unsigned int StatementsSize = ArraySize(Statements);
   unsigned int i;
 
+  /* Create a new exec block and link it with previous ones */
+  executing_block *CurExecBlock = calloc(1, sizeof(executing_block));
+  if (HeadExecBlock) {
+    CurExecBlock->Next = HeadExecBlock;
+    HeadExecBlock->Prev = CurExecBlock;
+  }
+  HeadExecBlock = CurExecBlock;
+
+  /* Execute statements */
   for (i = 0; i < StatementsSize; i++) {
-    Result = Eval(Statements[i], Env);
+    Result = Eval(Statements[i], Env, HeadExecBlock);
+
+    if (GCNeedsCleanup()) {
+      markAllExecBlocks();
+      GCMarkAndSweep(RootEnv);
+    }
 
     if (Result->Type == FLUFF_OBJECT_RETURN) {
       return Result;
     }
   }
 
+  /* Remove our exec block */
+  if (CurExecBlock == HeadExecBlock) {
+    HeadExecBlock = CurExecBlock->Next;
+  }
+  if (CurExecBlock->Next != NULL) {
+    CurExecBlock->Next->Prev = (HeadExecBlock)->Prev;
+  }
+  if (CurExecBlock->Prev != NULL) {
+    CurExecBlock->Prev->Next = (HeadExecBlock)->Next;
+  }
+  ArrayFree(CurExecBlock->InFlightObjects);
+  free(CurExecBlock);
   return Result;
 }
 
@@ -630,8 +732,9 @@ object *evalInfixExpression(fluff_token_type Op, object *Left, object *Right) {
 }
 
 object *evalInfixAssignExpression(ast_base *Left, ast_base *Right,
-                                  environment *Env) {
-  object *RightObj = Eval(Right, Env);
+                                  environment *Env,
+                                  executing_block *ExecBlock) {
+  object *RightObj = Eval(Right, Env, ExecBlock);
   if (Left->Type == AST_IDENTIFIER) {
     const char *Var = ((ast_identifier *)Left)->Value;
     if (FindInEnv(Env, Var)) {
@@ -643,7 +746,8 @@ object *evalInfixAssignExpression(ast_base *Left, ast_base *Right,
   return (object *)&NullObject;
 }
 
-object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env) {
+object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env,
+                        executing_block *ExecBlock) {
   if (Right->Type == AST_FUNCTION_CALL) {
     /* This is only slightly different than the normal handling of
      * AST_FUNCTION_CALL This is because we need to insert the implicit This
@@ -652,8 +756,8 @@ object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env) {
      * each object's methods are located within the SupportedFunctions inside
      * the root object structure */
     ast_function_call *Method = (ast_function_call *)Right;
-    object *Caller = Eval(Left, Env);
-    object **Exprs = evalExpressions(Method->Arguments, Env);
+    object *Caller = Eval(Left, Env, ExecBlock);
+    object **Exprs = evalExpressions(Method->Arguments, Env, ExecBlock);
 
     /* Insert the Caller into the beginning of exprs as a **this** pointer */
     const char *LookupMethod = ((ast_identifier *)Method->FunctionName)->Value;
@@ -672,7 +776,7 @@ object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env) {
       }
     }
     if (Function) {
-      return evalFunctionCall(Function, Exprs);
+      return evalFunctionCall(Function, Exprs, ExecBlock);
     } else {
       return NewError("method %s not found for %s", LookupMethod,
                       FluffObjectType[Caller->Type]);

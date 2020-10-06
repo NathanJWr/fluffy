@@ -27,7 +27,6 @@ void *ReadWholeFile(const char *Filename, size_t *Length) {
   Data = MapViewOfFile(FileMappingHandle, FILE_MAP_READ, 0, 0, 0);
   *Length = FileSize.QuadPart;
 #endif
-
   return Data;
 }
 
@@ -49,7 +48,7 @@ int main(int argc, char *argv[]) {
     EvalInit(Env);
 
     ProgramTree = ParseProgram(&Parser);
-    ReturnValue = Eval((ast_base *)ProgramTree, Env);
+    ReturnValue = Eval((ast_base *)ProgramTree, Env, NULL);
     if (ReturnValue->Type != FLUFF_OBJECT_NULL) {
       PrintObject(ReturnValue);
     }

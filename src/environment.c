@@ -95,6 +95,7 @@ void InitEnv(environment *Env, unsigned int Size, mallocFunc MallocFunc,
 
   Env->Objects = MallocFunc(AllocSize);
   Env->Malloc = MallocFunc;
+  Env->Free = FreeFunc;
   memset(Env->Objects, 0, AllocSize);
 
   Env->Outer = NULL;
@@ -251,7 +252,10 @@ void markObject(object *Obj) {
 
   switch (Obj->Type) {
   case FLUFF_OBJECT_RETURN: {
-    markObject(((object_return *)Obj)->Retval);
+    object_return *Ret = (object_return *)Obj;
+    if (Ret->Retval) {
+      markObject(Ret->Retval);
+    }
   } break;
 
   case FLUFF_OBJECT_FUNCTION: {
