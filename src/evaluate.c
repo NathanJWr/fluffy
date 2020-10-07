@@ -154,9 +154,16 @@ object *evalString(ast_base *Node) {
 object *evalArrayLiteral(ast_base *Node, environment *Env,
                          executing_block *ExecBlock) {
   ast_array_literal *Arr = (ast_array_literal *)Node;
+
+  /* Evaluate items first */
+  object ***Items = evalArrayItems(Arr->Items, Env, ExecBlock);
+
+  /* Allocate object afterwards, as we don't want it to be freed
+   * prematurely by the GC */
   object_array *ArrObject =
       (object_array *)NewObject(FLUFF_OBJECT_ARRAY, sizeof(object_array));
-  ArrObject->Items = evalArrayItems(Arr->Items, Env, ExecBlock);
+  ArrObject->Items = Items;
+
   return (object *)ArrObject;
 }
 
@@ -496,17 +503,22 @@ object ***evalArrayItems(ast_base **Items, environment *Env,
   object ***Result = NULL;
   unsigned int i;
   unsigned int ItemsLength = ArraySize(Items);
+  object **TempItems = malloc(sizeof(*TempItems) * ItemsLength);
 
   for (i = 0; i < ItemsLength; i++) {
-    object **EvaluatedPointer = GCMalloc(sizeof(object *));
-    *EvaluatedPointer = Eval(Items[i], Env, ExecBlock);
+    object *EvalItem = Eval(Items[i], Env, ExecBlock);
+    TempItems[i] = EvalItem;
 
-    GCArrayPush(Result, EvaluatedPointer);
-    if ((*EvaluatedPointer)->Type == FLUFF_OBJECT_ERROR) {
+    if (EvalItem->Type == FLUFF_OBJECT_ERROR) {
       return Result;
     }
   }
-
+  for (i = 0; i < ItemsLength; i++) {
+    object **EvaluatedPointer = GCMalloc(sizeof(object *));
+    *EvaluatedPointer = TempItems[i];
+    GCArrayPush(Result, EvaluatedPointer);
+  }
+  free(TempItems);
   return Result;
 }
 
@@ -541,7 +553,8 @@ object *evalProgram(ast_program *Program, environment *Env,
     Result = Eval(Statements[i], Env, CurExecBlock);
 
     if (Result->Type == FLUFF_OBJECT_RETURN) {
-      return ((object_return *)Result)->Retval;
+      Result = unwrapReturnValue(Result);
+      break;
     }
 
     if (GCNeedsCleanup()) {
@@ -555,10 +568,10 @@ object *evalProgram(ast_program *Program, environment *Env,
     HeadExecBlock = CurExecBlock->Next;
   }
   if (CurExecBlock->Next != NULL) {
-    CurExecBlock->Next->Prev = (HeadExecBlock)->Prev;
+    CurExecBlock->Next->Prev = CurExecBlock->Prev;
   }
   if (CurExecBlock->Prev != NULL) {
-    CurExecBlock->Prev->Next = (HeadExecBlock)->Next;
+    CurExecBlock->Prev->Next = CurExecBlock->Next;
   }
   ArrayFree(CurExecBlock->InFlightObjects);
   free(CurExecBlock);
@@ -591,7 +604,7 @@ object *evalBlock(ast_block_statement *Block, environment *Env,
     }
 
     if (Result->Type == FLUFF_OBJECT_RETURN) {
-      return Result;
+      break;
     }
   }
 
