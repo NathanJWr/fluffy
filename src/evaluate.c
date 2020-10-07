@@ -1,30 +1,6 @@
-static object_null NullObject = {
-    .Base.Type = FLUFF_OBJECT_NULL,
-    .Base.Size = 0,
-};
-
 static environment BuiltinEnv;
 static executing_block *HeadExecBlock;
 static environment *RootEnv;
-
-object *builtinPrint(object **Args) {
-  if (ArraySize(Args) == 1) {
-    PrintObject(Args[0]);
-    printf("\n");
-  }
-  return (object *)&NullObject;
-}
-
-object *builtinType(object **Args) {
-  if (ArraySize(Args) == 1) {
-    return NewStringCopy(FluffObjectType[Args[0]->Type]);
-  }
-  return NewError("invalid number of arguments. expected 1 and received %d",
-                  ArraySize(Args));
-}
-
-STATIC_BUILTIN_FUNCTION_VARIABLE(BuiltinPrint, builtinPrint);
-STATIC_BUILTIN_FUNCTION_VARIABLE(BuiltinType, builtinType);
 
 /* TODO: switch statements default to NULL. Implement some kind of error
  * messages */
@@ -87,8 +63,7 @@ char *DuplicateStringWithGC(char *Str);
 void EvalInit(environment *Root) {
   /* Create a builtin function table */
   InitEnv(&BuiltinEnv, 16, malloc, free);
-  AddToEnv(&BuiltinEnv, "print", (object *)&BuiltinPrint);
-  AddToEnv(&BuiltinEnv, "type", (object *)&BuiltinType);
+  AddToEnv(&BuiltinEnv, "System", (object *)GetObjectSystemClass());
 
   InitObjectMethodEnvs();
 
@@ -97,7 +72,7 @@ void EvalInit(environment *Root) {
 }
 
 object *wrapReturnVal(object *Ret, executing_block *ExecBlock) {
-  if (Ret->Type != FLUFF_OBJECT_NULL)
+  if (Ret && Ret->Type != FLUFF_OBJECT_NULL)
     ArrayPush(ExecBlock->InFlightObjects, Ret);
   return Ret;
 }
@@ -179,9 +154,16 @@ object *evalString(ast_base *Node) {
 object *evalArrayLiteral(ast_base *Node, environment *Env,
                          executing_block *ExecBlock) {
   ast_array_literal *Arr = (ast_array_literal *)Node;
+
+  /* Evaluate items first */
+  object ***Items = evalArrayItems(Arr->Items, Env, ExecBlock);
+
+  /* Allocate object afterwards, as we don't want it to be freed
+   * prematurely by the GC */
   object_array *ArrObject =
       (object_array *)NewObject(FLUFF_OBJECT_ARRAY, sizeof(object_array));
-  ArrObject->Items = evalArrayItems(Arr->Items, Env, ExecBlock);
+  ArrObject->Items = Items;
+
   return (object *)ArrObject;
 }
 
@@ -372,8 +354,13 @@ object *evalNewExpression(ast_base *Node, environment *Env,
   /* find the class inside our stored user defined class env */
   object *Obj = FindInEnv(RootEnv, Expr->Class->Value);
   object_class *Class = NULL;
-  if (Obj->Type == FLUFF_OBJECT_CLASS) {
+  if (Obj && Obj->Type == FLUFF_OBJECT_CLASS) {
     Class = (object_class *)Obj;
+  } else {
+    Obj = FindInEnv(&BuiltinEnv, Expr->Class->Value);
+    if (Obj && Obj->Type == FLUFF_OBJECT_CLASS) {
+      Class = (object_class *)Obj;
+    }
   }
   if (Class) {
     /* Instantiate the class by creating an enclosed environemnt with
@@ -516,17 +503,22 @@ object ***evalArrayItems(ast_base **Items, environment *Env,
   object ***Result = NULL;
   unsigned int i;
   unsigned int ItemsLength = ArraySize(Items);
+  object **TempItems = malloc(sizeof(*TempItems) * ItemsLength);
 
   for (i = 0; i < ItemsLength; i++) {
-    object **EvaluatedPointer = GCMalloc(sizeof(object *));
-    *EvaluatedPointer = Eval(Items[i], Env, ExecBlock);
+    object *EvalItem = Eval(Items[i], Env, ExecBlock);
+    TempItems[i] = EvalItem;
 
-    GCArrayPush(Result, EvaluatedPointer);
-    if ((*EvaluatedPointer)->Type == FLUFF_OBJECT_ERROR) {
+    if (EvalItem->Type == FLUFF_OBJECT_ERROR) {
       return Result;
     }
   }
-
+  for (i = 0; i < ItemsLength; i++) {
+    object **EvaluatedPointer = GCMalloc(sizeof(object *));
+    *EvaluatedPointer = TempItems[i];
+    GCArrayPush(Result, EvaluatedPointer);
+  }
+  free(TempItems);
   return Result;
 }
 
@@ -561,7 +553,8 @@ object *evalProgram(ast_program *Program, environment *Env,
     Result = Eval(Statements[i], Env, CurExecBlock);
 
     if (Result->Type == FLUFF_OBJECT_RETURN) {
-      return ((object_return *)Result)->Retval;
+      Result = unwrapReturnValue(Result);
+      break;
     }
 
     if (GCNeedsCleanup()) {
@@ -575,10 +568,10 @@ object *evalProgram(ast_program *Program, environment *Env,
     HeadExecBlock = CurExecBlock->Next;
   }
   if (CurExecBlock->Next != NULL) {
-    CurExecBlock->Next->Prev = (HeadExecBlock)->Prev;
+    CurExecBlock->Next->Prev = CurExecBlock->Prev;
   }
   if (CurExecBlock->Prev != NULL) {
-    CurExecBlock->Prev->Next = (HeadExecBlock)->Next;
+    CurExecBlock->Prev->Next = CurExecBlock->Next;
   }
   ArrayFree(CurExecBlock->InFlightObjects);
   free(CurExecBlock);
@@ -611,7 +604,7 @@ object *evalBlock(ast_block_statement *Block, environment *Env,
     }
 
     if (Result->Type == FLUFF_OBJECT_RETURN) {
-      return Result;
+      break;
     }
   }
 

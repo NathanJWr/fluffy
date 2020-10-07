@@ -19,7 +19,7 @@
 #include <stdbool.h>
 
 /* debug includes */
-#include "src/leak_checker.h"
+// #include "src/leak_checker.h"
 
 /* stretchy arrays */
 #include "src/stretchy_array.h"
@@ -29,6 +29,7 @@
 #include "src/object_methods.h"
 #include "src/object_string.h"
 #include "src/object_array.h"
+#include "src/object_system.h"
 #include "src/environment.h"
 #include "src/evaluate.h"
 #include "src/garbage_collector.h"
@@ -49,6 +50,7 @@
 #include "src/environment.c"
 #include "src/object_string.c"
 #include "src/object_array.c"
+#include "src/object_system.c"
 #include "src/evaluate.c"
 
 #ifdef _WIN32

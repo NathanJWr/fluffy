@@ -1,3 +1,5 @@
+var system = new System;
+
 var fib = fn(n) {
     if (n < 2) {
        return(n);
@@ -5,8 +7,13 @@ var fib = fn(n) {
     return(fib(n-1) + fib(n-2));
 }
 
-print(fib(5));
-print(fib(7));
-print(fib(9));
-print(fib(11));
-print(fib(14));
+
+var results = [ fib(5),
+                fib(7),
+		fib(9),
+		fib(11),
+		fib(13),
+		fib(15) ];
+
+system.print(results);
+

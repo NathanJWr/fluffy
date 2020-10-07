@@ -249,7 +249,6 @@ void markFunctionObject(object_function *Func) {
 
 void markObject(object *Obj) {
   GCMarkAllocation(Obj);
-
   switch (Obj->Type) {
   case FLUFF_OBJECT_RETURN: {
     object_return *Ret = (object_return *)Obj;
