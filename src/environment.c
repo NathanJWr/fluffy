@@ -283,6 +283,11 @@ void markObject(object *Obj) {
     EnvironmentMark(Instance->Locals);
   } break;
 
+  case FLUFF_OBJECT_FILE: {
+    object_file *File = (object_file *)Obj;
+    GCMarkAllocation(File->File);
+  }
+
   default: {
     return;
   }

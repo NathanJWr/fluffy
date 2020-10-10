@@ -1,0 +1,6 @@
+var system = new System;
+
+var TestFile = system.openFile("examples\fib.fl");
+var FileContents = TestFile.readAll();
+system.print(FileContents);
+

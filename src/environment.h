@@ -32,3 +32,4 @@ void ReplaceInEnv(environment *Env, const char *Var, object *Item);
 environment *CreateEnvironment(void);
 environment *CreateEnclosedEnvironment(environment *Outer);
 void EnvironmentMark(environment *Env);
+object *FindInEnv(environment *Env, const char *Var);
