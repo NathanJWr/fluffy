@@ -10,8 +10,8 @@
   X(FLUFF_OBJECT_BUILTIN)                                                      \
   X(FLUFF_OBJECT_METHOD)                                                       \
   X(FLUFF_OBJECT_CLASS)                                                        \
-  X(FLUFF_OBJECT_BUILTIN_CLASS)                                                \
   X(FLUFF_OBJECT_CLASS_INSTANTIATION)                                          \
+  X(FLUFF_OBJECT_FILE)                                                         \
   XX(OJECT_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -30,7 +30,6 @@ const char *FluffObjectType[] = {FLUFF_OBJECT_TYPE_LIST};
 struct object;
 typedef struct object object;
 typedef object *(*object_method_function)(object *This, object **Args);
-
 
 struct environment;
 typedef struct {
@@ -117,6 +116,13 @@ typedef struct {
   ast_var_statement **Variables;
 } object_class;
 
+struct object_file_handle;
+typedef struct object_file {
+  object Base;
+
+  struct object_file_handle *File;
+} object_file;
+
 typedef struct {
   object Base;
 
@@ -162,4 +168,3 @@ static object_null NullObject = {
     .Base.Type = FLUFF_OBJECT_NULL,
     .Base.Size = 0,
 };
-

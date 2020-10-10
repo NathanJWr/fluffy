@@ -1,9 +1,13 @@
+typedef void (*gc_on_free_func)(void **Args);
 typedef struct gc_alloc_info {
   struct gc_alloc_info *Next;
   struct gc_alloc_info *Prev;
 
   unsigned int Size;
   unsigned char Mark;
+
+  gc_on_free_func OnFree;
+  void **OnFreeArgs; /* stretchy array */
 } gc_alloc_info;
 
 static gc_alloc_info *GCHead = NULL;
@@ -18,6 +22,8 @@ void *GCMalloc(size_t Size) {
   Info->Prev = NULL;
   Info->Mark = 0;
   Info->Size = Size;
+  Info->OnFree = NULL;
+  Info->OnFreeArgs = NULL;
 
   if (GCHead) {
     Info->Next = GCHead;
@@ -27,6 +33,13 @@ void *GCMalloc(size_t Size) {
   AllocationsSinceSweep++;
 
   return Info + 1;
+}
+
+void GCSetOnFreeFunc(void *Allocation, gc_on_free_func Fn, void **Args) {
+  gc_alloc_info *Info =
+      (gc_alloc_info *)((char *)Allocation - sizeof(gc_alloc_info));
+  Info->OnFree = Fn;
+  Info->OnFreeArgs = Args;
 }
 
 void *GCRealloc(void *Allocation, unsigned int Size) {
@@ -66,6 +79,10 @@ void GCRemoveNode(gc_alloc_info *Node) {
 
   if (Node->Prev != NULL) {
     Node->Prev->Next = Node->Next;
+  }
+
+  if (Node->OnFree) {
+    Node->OnFree(Node->OnFreeArgs);
   }
 
   free(Node);

@@ -4,4 +4,5 @@ void InitObjectMethodEnvs() {
   InitObjectStringEnv();
   InitObjectArrayEnv();
   InitObjectSystemEnv();
+  InitObjectFileEnv();
 }
