@@ -83,6 +83,7 @@ void GCRemoveNode(gc_alloc_info *Node) {
 
   if (Node->OnFree) {
     Node->OnFree(Node->OnFreeArgs);
+    free(Node->OnFreeArgs);
   }
 
   free(Node);
