@@ -16,9 +16,9 @@ object_file *NewFileObject() {
   object_file *FileObj =
       (object_file *)NewObject(FLUFF_OBJECT_FILE, sizeof(object_file));
   FileObj->Base.MethodEnv = &FileMethodEnv;
-  FileObj->File = GCMalloc(sizeof(object_file_handle));
+  FileObj->File = GCMalloc(sizeof(platform_file_handle));
 
-  void **Args = malloc(sizeof(*Args) * sizeof(object_file_handle));
+  void **Args = malloc(sizeof(*Args) * sizeof(platform_file_handle));
   *Args = FileObj->File;
   GCSetOnFreeFunc(FileObj, fluffMethodFileDestructor, Args);
 
@@ -40,8 +40,8 @@ static object *fluffMethodFileReadAll(object **Args) {
 }
 
 static void fluffMethodFileDestructor(void **Args) {
-  object_file_handle **HandlesPtr = (object_file_handle **)Args;
-  object_file_handle *Handle = HandlesPtr[0];
+  platform_file_handle **HandlesPtr = (platform_file_handle **)Args;
+  platform_file_handle *Handle = HandlesPtr[0];
   if (!PlatformCloseFileHandle(Handle)) {
     printf("Failed to close file handle\n");
     exit(1);

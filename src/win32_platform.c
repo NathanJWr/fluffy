@@ -1,4 +1,4 @@
-bool PlatformReadWholeFile(object_file_handle *Handle, void *Buffer,
+bool PlatformReadWholeFile(platform_file_handle *Handle, void *Buffer,
                            size_t BufferSize) {
   DWORD BytesRead;
   ReadFile(Handle->Handle, Buffer, BufferSize, &BytesRead, NULL);
@@ -9,7 +9,7 @@ bool PlatformReadWholeFile(object_file_handle *Handle, void *Buffer,
   return true;
 }
 
-size_t PlatformGetFileSize(object_file_handle *Handle) {
+size_t PlatformGetFileSize(platform_file_handle *Handle) {
   ULARGE_INTEGER FSize;
   FSize.LowPart = GetFileSize(Handle->Handle, &FSize.HighPart);
 
@@ -17,7 +17,7 @@ size_t PlatformGetFileSize(object_file_handle *Handle) {
 }
 
 bool PlatformCreateFileHandle(const char *Filename,
-                              object_file_handle *Handle) {
+                              platform_file_handle *Handle) {
 
   /* Note: Open file handle with read and write access for simplicity */
   HANDLE FileHandle = CreateFile(Filename, GENERIC_READ | GENERIC_WRITE,
@@ -33,6 +33,6 @@ bool PlatformCreateFileHandle(const char *Filename,
   return true;
 }
 
-bool PlatformCloseFileHandle(object_file_handle *Handle) {
+bool PlatformCloseFileHandle(platform_file_handle *Handle) {
   return CloseHandle(Handle->Handle);
 }
