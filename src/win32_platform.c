@@ -16,9 +16,12 @@ size_t PlatformGetFileSize(object_file_handle *Handle) {
   return FSize.QuadPart;
 }
 
-bool PlatformCreateReadFileHandle(const char *Filename,
-                                  object_file_handle *Handle) {
-  HANDLE FileHandle = CreateFile(Filename, GENERIC_READ, FILE_SHARE_READ, NULL,
+bool PlatformCreateFileHandle(const char *Filename,
+                              object_file_handle *Handle) {
+
+  /* Note: Open file handle with read and write access for simplicity */
+  HANDLE FileHandle = CreateFile(Filename, GENERIC_READ | GENERIC_WRITE,
+                                 FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                                  OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (FileHandle == INVALID_HANDLE_VALUE) {

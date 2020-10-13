@@ -6,8 +6,7 @@ typedef struct object_file_handle {
 
 bool PlatformReadWholeFile(object_file_handle *Handle, void *Buffer,
                            size_t BufferSize);
-bool PlatformCreateReadFileHandle(const char *Filename,
-                                  object_file_handle *Handle);
+bool PlatformCreateFileHandle(const char *Filename, object_file_handle *Handle);
 bool PlatformCloseFileHandle(object_file_handle *Handle);
 
 #endif
