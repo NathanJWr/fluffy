@@ -1,0 +1,4 @@
+var system = new System;
+
+var f = system.openFile("hello.txt");
+f.write("Hello World!");

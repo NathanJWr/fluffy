@@ -1,13 +1,16 @@
 environment FileMethodEnv;
 static void fluffMethodFileDestructor(void **Args);
 static object *fluffMethodFileReadAll(object **Args);
+static object *fluffMethodFileWrite(object **Args);
 
 STATIC_BUILTIN_FUNCTION_VARIABLE(FluffMethodFileReadAll,
                                  fluffMethodFileReadAll);
+STATIC_BUILTIN_FUNCTION_VARIABLE(FluffMethodFileWrite, fluffMethodFileWrite);
 
 void InitObjectFileEnv() {
   InitEnv(&FileMethodEnv, 16, malloc, free);
   AddToEnv(&FileMethodEnv, "readAll", (object *)&FluffMethodFileReadAll);
+  AddToEnv(&FileMethodEnv, "write", (object *)&FluffMethodFileWrite);
 }
 
 environment *GetObjectFileEnv() { return &FileMethodEnv; }
@@ -37,6 +40,26 @@ static object *fluffMethodFileReadAll(object **Args) {
   Str->Value[FSize] = 0;
 
   return (object *)Str;
+}
+
+static object *fluffMethodFileWrite(object **Args) {
+  if (ArraySize(Args) != 2) {
+    return NewError("write expected 2 arguments. got %d", ArraySize(Args));
+  }
+  object_file *File = (object_file *)Args[0];
+  object *ToWrite = Args[1];
+  if (ToWrite->Type != FLUFF_OBJECT_STRING) {
+    return NewError("write expected object of type %s. got %s",
+                    FluffObjectType[FLUFF_OBJECT_STRING],
+                    FluffObjectType[ToWrite->Type]);
+  }
+
+  size_t DataLen = strlen(((object_string *)ToWrite)->Value);
+  bool Success = PlatformWriteFile(File->File, ((object_string *)ToWrite)->Value, DataLen);
+
+  object_boolean *RetVal = NewBoolean();
+  RetVal->Value = Success;
+  return (object *)RetVal;
 }
 
 static void fluffMethodFileDestructor(void **Args) {
