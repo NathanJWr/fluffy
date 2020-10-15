@@ -1,7 +1,3 @@
-#ifdef _WIN32
-#define _CRT_SECURE_NO_WARNINGS
-#endif
-
 #define DEBUG_TYPES
 
 /* standard includes */
@@ -18,6 +14,15 @@
 #include <float.h>
 #include <stdbool.h>
 
+#ifdef _WIN32
+#define _CRT_SECURE_NO_WARNINGS
+#include <windows.h>
+#include "src/win32_platform.h"
+#include "src/win32_platform.c"
+#endif
+
+
+
 /* debug includes */
 #include "src/leak_checker.h"
 
@@ -29,6 +34,8 @@
 #include "src/object_methods.h"
 #include "src/object_string.h"
 #include "src/object_array.h"
+#include "src/object_file.h"
+#include "src/object_system.h"
 #include "src/environment.h"
 #include "src/evaluate.h"
 #include "src/garbage_collector.h"
@@ -49,6 +56,9 @@
 #include "src/environment.c"
 #include "src/object_string.c"
 #include "src/object_array.c"
+#include "src/object_system.c"
+#include "src/object_file.c"
 #include "src/evaluate.c"
+
 #include "src/repl.c"
 

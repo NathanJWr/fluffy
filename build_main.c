@@ -1,7 +1,3 @@
-#ifdef _WIN32
-#define _CRT_SECURE_NO_WARNINGS
-#endif
-
 #define DEBUG_TYPES
 
 /* standard includes */
@@ -19,6 +15,7 @@
 #include <stdbool.h>
 
 #ifdef _WIN32
+#define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
 #include "src/win32_platform.h"
 #include "src/win32_platform.c"

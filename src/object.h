@@ -116,11 +116,11 @@ typedef struct {
   ast_var_statement **Variables;
 } object_class;
 
-struct object_file_handle;
+struct platform_file_handle;
 typedef struct object_file {
   object Base;
 
-  struct object_file_handle *File;
+  struct platform_file_handle *File;
 } object_file;
 
 typedef struct {

@@ -45,9 +45,10 @@ int main() {
     LexerInit(&Lexer, ReadBuffer, ReadBuffer + GetlineSize, StringStore,
               StringStoreSize);
     ParserInit(&Parser, &Lexer);
+    EvalInit(Env);
 
     Program = ParseProgram(&Parser);
-    Obj = Eval((ast_base *)Program, Env);
+    Obj = Eval((ast_base *)Program, Env, NULL);
     if (Obj->Type == FLUFF_OBJECT_ERROR) {
       PrintObject(Obj);
       printf("\n");

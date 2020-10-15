@@ -55,7 +55,7 @@ static object *fluffMethodSystemOpenFile(object **Args) {
   if (Args[0]->Type == FLUFF_OBJECT_STRING) {
     object_string *Filename = (object_string *)Args[0];
     object_file *FileObj = NewFileObject();
-    bool Success = PlatformCreateReadFileHandle(Filename->Value, FileObj->File);
+    bool Success = PlatformCreateFileHandle(Filename->Value, FileObj->File);
     if (!Success) {
       return NewError("failed to open file %s", Filename->Value);
     }
