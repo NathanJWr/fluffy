@@ -48,11 +48,11 @@ int main() {
     EvalInit(Env);
 
     Program = ParseProgram(&Parser);
-    Obj = Eval((ast_base *)Program, Env, NULL);
-    if (Obj->Type == FLUFF_OBJECT_ERROR) {
+    Obj = Eval((ast_base *)Program, Env);
+    //if (Obj->Type == FLUFF_OBJECT_ERROR) {
       PrintObject(Obj);
       printf("\n");
-    }
+      //}
     ArrayPush(Programs, (ast_base *)Program);
 
     /* Hacky things to keep pointers from being invalidated */

@@ -15,4 +15,4 @@ typedef struct executing_block {
   struct executing_block *Next;
   struct executing_block *Prev;
 } executing_block;
-object *Eval(ast_base *Node, environment *Env, executing_block *ExecBlock);
+object *Eval(ast_base *Node, environment *Env);
