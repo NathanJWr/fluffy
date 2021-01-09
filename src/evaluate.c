@@ -18,8 +18,7 @@ object **evalExpressions(ast_base **Exprs, environment *Env,
                          executing_block *ExecBlock);
 object ***evalArrayItems(ast_base **Items, environment *Env,
                          executing_block *ExecBlock);
-object *evalPrefix(ast_base *Node, environment *Env,
-                   executing_block *ExecBlock);
+void evalPrefix(ast_prefix_expression * Prefix, environment *Env);
 object *evalPrefixExpression(fluff_token_type Op, object *Obj);
 object *evalIfExpression(ast_base *Node, environment *Env,
                          executing_block *ExecBlock);
@@ -38,8 +37,10 @@ object *evalClassStatement(ast_base *Node, environment *Env,
                            executing_block *ExecBlock);
 object *evalNewExpression(ast_base *Node, environment *Env,
                           executing_block *ExecBlock);
-object *evalBangOperatorExpression(object *Ojb);
-object *evalMinusPrefixOperatorExpression(object *Obj);
+
+void evalBangPrefixOperatorExpression();
+void evalMinusPrefixOperatorExpression();
+
 object *evalInfix(ast_base *Node, environment *Env, executing_block *ExecBlock);
 object *evalInfixExpression(fluff_token_type Op, object *Left, object *Right);
 object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env,
@@ -101,7 +102,6 @@ void * objectStackPeek(void) {
   return ObjectStack [ ObjectStackSize - 1 ];
 }
 
-
 object *Eval(ast_base *Node, environment *Env) {
   internalEval(Node, Env);
   return objectStackPop();
@@ -124,8 +124,16 @@ void internalEval(ast_base * Node, environment * Env) {
   case AST_ARRAY_LITERAL: {
     evalArrayLiteral((ast_array_literal *) Node, Env);
   } break;
+  case AST_PREFIX_EXPRESSION: {
+    evalPrefix((ast_prefix_expression *) Node, Env);
+  } break;
   }
 }
+
+#define internalEvalReturnIfError(Node, Env)  \
+  internalEval(Node, Env); \
+  if ( ((object *) objectStackPeek())->Type == FLUFF_OBJECT_ERROR ) \
+    return;
 
 object *unwrapReturnValue(object *Obj) {
   if (Obj->Type == FLUFF_OBJECT_RETURN) {
@@ -143,13 +151,10 @@ void evalProgram(ast_program *Program, environment *Env) {
   unsigned int StatementsSize = ArraySize(Statements);
 
   for (unsigned int i = 0; i < StatementsSize; i++) {
-    internalEval(Statements [ i ], Env);
-
+    internalEvalReturnIfError(Statements [ i ], Env);
+    
     object * EvaluatedObject = objectStackPeek();
-    if (EvaluatedObject->Type == FLUFF_OBJECT_ERROR) {
-      /* early terminate on error */
-      return;
-    } else if (EvaluatedObject->Type == FLUFF_OBJECT_RETURN) {
+    if (EvaluatedObject->Type == FLUFF_OBJECT_RETURN) {
       /* early terminate on return */
       objectStackPop();
       objectStackPush(unwrapReturnValue(EvaluatedObject));
@@ -188,7 +193,7 @@ void evalNumber(ast_number *Number) {
  */
 void evalBool(ast_boolean *Bool) {
   object_boolean * EvaluatedBool = NewBoolean();
-  Bool->Value = Bool->Value;
+  EvaluatedBool->Value = Bool->Value;
   objectStackPush(EvaluatedBool);
 }
 
@@ -219,7 +224,7 @@ void evalArrayLiteral(ast_array_literal * ArrayNode, environment *Env) {
   unsigned int ItemsLength = ArraySize(Items);
 
   for (unsigned int i = 0; i < ItemsLength; i++) {
-    internalEval(Items [ i ], Env);
+    internalEvalReturnIfError(Items [ i ], Env);
 
     object ** p = GCMalloc(sizeof(*p));
     *p = objectStackPop();
@@ -227,6 +232,91 @@ void evalArrayLiteral(ast_array_literal * ArrayNode, environment *Env) {
   }
 
   /* leave array on stack as the return value */
+}
+
+/* evaluates whatever is on the right of the prefix expression and then applies the prefix operator
+ * to the result 
+ *
+ * @return: object that contains the evaluated prefix expression on the stack
+ */
+void evalPrefix(ast_prefix_expression *Prefix, environment *Env) {
+  internalEvalReturnIfError(Prefix->Right, Env);
+  switch (Prefix->Operation) {
+  case TOKEN_BANG: {
+    evalBangPrefixOperatorExpression();
+  } break;
+  case TOKEN_MINUS: {
+    evalMinusPrefixOperatorExpression();
+  } break;
+  default: {
+    object * RightEval = objectStackPeek();
+    objectStackPush(NewError("unknown operator: %s on %s", FluffTokenType [ Prefix->Operation ],
+                             FluffObjectType [ RightEval->Type ]));
+  }
+  }
+  /* leave result/error on stack as the return value */
+}
+
+/* attempts to apply the bang operator to the object on the top of the stack
+ *
+ * @return: object that contains the result of the bang prefix operator or an error if the bang 
+ *          operator cannot be applied to a particular object type
+ */
+void evalBangPrefixOperatorExpression() {
+  object * Obj = objectStackPop();
+  switch (Obj->Type) {
+  case FLUFF_OBJECT_BOOLEAN: {
+    object_boolean * Bool = (object_boolean *) Obj;
+    object_boolean * EvalBool = NewBoolean();
+    EvalBool->Value = !Bool->Value;
+    objectStackPush(EvalBool);
+  } break;
+  case FLUFF_OBJECT_NUMBER: {
+    object_number * Number = (object_number *) Obj;
+    object_boolean * EvalBool = NewBoolean();
+    switch (Number->Type) {
+    case NUM_INTEGER: {
+      EvalBool->Value = !Number->Int;
+    } break;
+    case NUM_DOUBLE: {
+      EvalBool->Value = !Number->Dbl;
+    } break;
+    }
+    objectStackPush(EvalBool);
+  } break;
+  default: {
+    objectStackPush(NewError("unknown operator: !%s", FluffObjectType[Obj->Type]));
+  }
+  }
+  /* leave result/error on stack as the return value */
+}
+
+/* Attempts to apply the minux prefix operator to the object on the top of the stack.
+ * 
+ * @return: object that contains the result of the minus prefix operator or an error if the
+ *          operator cannot be applied to a particular object type
+ */
+void evalMinusPrefixOperatorExpression() {
+  object * Obj = objectStackPop();
+  switch(Obj->Type) {
+  case FLUFF_OBJECT_NUMBER: {
+    object_number * Number = (object_number *) Obj;
+    object_number * EvalNumber = NewNumber();
+    EvalNumber->Type = Number->Type;
+    switch (Number->Type) {
+    case NUM_INTEGER: {
+      EvalNumber->Int = -Number->Int;
+    } break;
+    case NUM_DOUBLE: {
+      EvalNumber->Int = -Number->Dbl;
+    } break;
+    }
+    objectStackPush(EvalNumber);
+  } break;
+  default: {
+    objectStackPush(NewError("unknown operator: !%s", FluffObjectType[Obj->Type]));
+  }
+  }
 }
 
 
