@@ -12,16 +12,14 @@ void evalNumber(ast_number *Number);
 void evalBool(ast_boolean *Node);
 void evalString(ast_string *String);
 void evalArrayLiteral(ast_array_literal *Array, environment *Env);
-object *evalBlock(ast_block_statement *Block, environment *Env,
-                  executing_block *ExecBlock);
+void evalBlock(ast_block_statement *Block, environment *Env);
 object **evalExpressions(ast_base **Exprs, environment *Env,
                          executing_block *ExecBlock);
 object ***evalArrayItems(ast_base **Items, environment *Env,
                          executing_block *ExecBlock);
 void evalPrefix(ast_prefix_expression * Prefix, environment *Env);
 object *evalPrefixExpression(fluff_token_type Op, object *Obj);
-object *evalIfExpression(ast_base *Node, environment *Env,
-                         executing_block *ExecBlock);
+void evalIfExpression(ast_if_expression * IfExpr, environment *Env);
 object *evalReturnStatement(ast_base *Node, environment *Env,
                             executing_block *ExecBlock);
 object *evalVarStatement(ast_base *Node, environment *Env,
@@ -127,6 +125,12 @@ void internalEval(ast_base * Node, environment * Env) {
   case AST_INFIX_EXPRESSION: {
     evalInfix((ast_infix_expression *) Node, Env);
   } break;
+  case AST_BLOCK_STATEMENT: {
+    evalBlock((ast_block_statement *) Node, Env);
+  } break;
+  case AST_IF_EXPRESSION: {
+    evalIfExpression((ast_if_expression *) Node, Env);
+  } break;
   }
 }
 
@@ -134,6 +138,15 @@ void internalEval(ast_base * Node, environment * Env) {
 #define internalEvalReturnIfError(Node, Env)  \
   internalEval(Node, Env); \
   if ( ((object *) objectStackPeek())->Type == FLUFF_OBJECT_ERROR ) \
+    return;
+
+/* calls internal eval and returns if the object at the top of the stack is an error 
+ * or of type FLUFF_OBJECT_RETURN */
+#define internalEvalReturnIfErrorOrReturn(Node, Env)  \
+  internalEval(Node, Env); \
+  if ( ((object *) objectStackPeek())->Type == FLUFF_OBJECT_ERROR ) \
+    return; \
+  else if ( ((object *) objectStackPeek())->Type == FLUFF_OBJECT_RETURN ) \
     return;
 
 object *unwrapReturnValue(object *Obj) {
@@ -678,9 +691,9 @@ void evalStringInfixExpression(fluff_token_type Op) {
 
   switch (Op) {
   case TOKEN_PLUS: {
-    int LeftSize = strlen(LeftStr->Value);
-    int RightSize = strlen(RightStr->Value);
-    int Size = LeftSize + RightSize + 1;
+    size_t LeftSize = strlen(LeftStr->Value);
+    size_t RightSize = strlen(RightStr->Value);
+    size_t Size = LeftSize + RightSize + 1;
 
     object_string * Str = NewString(Size);
     memcpy(Str->Value, LeftStr->Value, LeftSize);
@@ -706,5 +719,54 @@ void evalStringInfixExpression(fluff_token_type Op) {
                              FluffTokenType [ Op ]));
   }
   }
+  /* leave result/error on stack as the return value */
 }
 
+void evalBlock(ast_block_statement *Block, environment *Env) {
+  ast_base ** Statements = Block->Statements;
+  size_t StatementsSize = ArraySize(Statements);
+
+  for (size_t i = 0; i < StatementsSize; i++) {
+    internalEvalReturnIfErrorOrReturn(Statements [ i ], Env);
+  }
+  /* leave result/error on stack as the return value */
+}
+bool isTruthy(object *Obj) {
+  switch (Obj->Type) {
+  case FLUFF_OBJECT_NULL: {
+    return false;
+  } break;
+  case FLUFF_OBJECT_BOOLEAN: {
+    return ((object_boolean *)Obj)->Value;
+  } break;
+  case FLUFF_OBJECT_NUMBER: {
+    switch (((object_number *)Obj)->Type) {
+    case NUM_INTEGER: {
+      return ((object_number *)Obj)->Int != 0;
+    } break;
+    case NUM_DOUBLE: {
+      return ((object_number *)Obj)->Dbl != 0;
+    } break;
+    default: {
+      assert(0);
+    } break;
+    }
+  }
+  default: {
+    return true;
+  } break;
+  }
+}
+
+void evalIfExpression(ast_if_expression * IfExpr, environment *Env) {
+  internalEvalReturnIfError(IfExpr->Condition, Env);
+  object * Condition = objectStackPop();
+  if (isTruthy(Condition)) {
+    internalEvalReturnIfError(IfExpr->Consequence, Env);
+  } else if (IfExpr->Alternative) {
+    internalEvalReturnIfError(IfExpr->Alternative, Env);
+  } else {
+    objectStackPush(&NullObject);
+  }
+  /* leave result/error on stack as the return value */
+}
