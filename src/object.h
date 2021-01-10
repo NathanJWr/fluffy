@@ -136,7 +136,7 @@ typedef struct {
   builtin_function Fn;
 } object_builtin;
 
-object *NewObject(object_type Type, unsigned int Size);
+object *NewObject(object_type Type, size_t Size);
 object *NewError(const char *Message, ...);
 void PrintObject(object *Obj);
 

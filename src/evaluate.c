@@ -41,7 +41,7 @@ object *evalNewExpression(ast_base *Node, environment *Env,
 void evalBangPrefixOperatorExpression();
 void evalMinusPrefixOperatorExpression();
 
-object *evalInfix(ast_base *Node, environment *Env, executing_block *ExecBlock);
+void evalInfix(ast_infix_expression * Infix, environment *Env);
 object *evalInfixExpression(fluff_token_type Op, object *Left, object *Right);
 object *evalDotOperator(ast_base *Left, ast_base *Right, environment *Env,
                         executing_block *ExecBlock);
@@ -49,12 +49,9 @@ object *evalFunctionCall(object *Fn, object **Exprs,
                          executing_block *ExecBlock);
 object *evalInfixAssignExpression(ast_base *Left, ast_base *Right,
                                   environment *Env, executing_block *ExecBlock);
-object *evalNumberInfixExpression(fluff_token_type Op, object_number *Left,
-                                  object_number *Right);
-object *evalStringInfixExpression(fluff_token_type Op, object_string *Left,
-                                  object_string *Right);
-object *evalBooleanInfixExpression(fluff_token_type Op, object_boolean *Left,
-                                   object_boolean *Right);
+void evalNumberInfixExpression(fluff_token_type Op);
+void evalStringInfixExpression(fluff_token_type Op);
+void evalBooleanInfixExpression(fluff_token_type Op);
 bool isTruthy(object *Obj);
 object *applyFunction(object *Fn, object **Args, executing_block *ExecBlock);
 environment *extendFnEnv(object_function *Fn, object **Args,
@@ -127,9 +124,13 @@ void internalEval(ast_base * Node, environment * Env) {
   case AST_PREFIX_EXPRESSION: {
     evalPrefix((ast_prefix_expression *) Node, Env);
   } break;
+  case AST_INFIX_EXPRESSION: {
+    evalInfix((ast_infix_expression *) Node, Env);
+  } break;
   }
 }
 
+/* calls internal eval and returns if the object at the top of the stack is an error */
 #define internalEvalReturnIfError(Node, Env)  \
   internalEval(Node, Env); \
   if ( ((object *) objectStackPeek())->Type == FLUFF_OBJECT_ERROR ) \
@@ -148,7 +149,7 @@ object *unwrapReturnValue(object *Obj) {
  */
 void evalProgram(ast_program *Program, environment *Env) {
   ast_base ** Statements = Program->Statements;
-  unsigned int StatementsSize = ArraySize(Statements);
+  size_t StatementsSize = ArraySize(Statements);
 
   for (unsigned int i = 0; i < StatementsSize; i++) {
     internalEvalReturnIfError(Statements [ i ], Env);
@@ -221,9 +222,9 @@ void evalArrayLiteral(ast_array_literal * ArrayNode, environment *Env) {
   objectStackPush(Array);
 
   ast_base ** Items = ArrayNode->Items;
-  unsigned int ItemsLength = ArraySize(Items);
+  size_t ItemsLength = ArraySize(Items);
 
-  for (unsigned int i = 0; i < ItemsLength; i++) {
+  for (size_t i = 0; i < ItemsLength; i++) {
     internalEvalReturnIfError(Items [ i ], Env);
 
     object ** p = GCMalloc(sizeof(*p));
@@ -308,7 +309,7 @@ void evalMinusPrefixOperatorExpression() {
       EvalNumber->Int = -Number->Int;
     } break;
     case NUM_DOUBLE: {
-      EvalNumber->Int = -Number->Dbl;
+      EvalNumber->Dbl = -Number->Dbl;
     } break;
     }
     objectStackPush(EvalNumber);
@@ -317,6 +318,393 @@ void evalMinusPrefixOperatorExpression() {
     objectStackPush(NewError("unknown operator: !%s", FluffObjectType[Obj->Type]));
   }
   }
+  /* leave result/error on stack as the return value */
 }
 
+/* evaluates an infix expression ast node
+ *
+ * @return: evaluated object or error on the stack */
+void evalInfix(ast_infix_expression * Infix, environment *Env) {
+  /* NOTE: we are evaluating right side first, THEN left. This means that the left evaluated object
+   * will be on the top of the stack. */
+  internalEvalReturnIfError(Infix->Right, Env);
+  internalEvalReturnIfError(Infix->Left, Env);
+  object * LeftEval = objectStackPeek();
+  /* NOTE: don't need to worry about type mismatch here, just call the 
+   * infix evaluator for the left hand's type and let them handle it. */
+  switch (LeftEval->Type) {
+  case FLUFF_OBJECT_NUMBER: {
+    evalNumberInfixExpression(Infix->Operation);
+  } break;
+  case FLUFF_OBJECT_BOOLEAN: {
+    evalBooleanInfixExpression(Infix->Operation);
+  } break;
+  case FLUFF_OBJECT_STRING: {
+    evalStringInfixExpression(Infix->Operation);
+  } break;
+  default: {
+    objectStackPush(NewError("unsupported type %s in infix expression", FluffTokenType[Infix->Operation]));
+  }
+  }
+  /* leave result/error on stack as the return value */
+}
+
+
+/* Helper functon fo infix expressions for numbers.
+ * This particular version of the helper function should be called when
+ * both the left and right side of the expression are integers
+ *
+ * @return: number containing the evaluated integer or error on the stack */
+evalNumberInfixExpressionii(fluff_token_type Op, int Left, int Right) {
+  switch (Op) {
+  case TOKEN_PLUS: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_INTEGER;
+    Num->Int = Left + Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_MINUS: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_INTEGER;
+    Num->Int = Left - Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_SLASH: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_INTEGER;
+    Num->Int = Left / Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_ASTERISK: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_INTEGER;
+    Num->Int = Left * Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_LT: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left < Right;
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_GT: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left > Right;
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_EQ: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left == Right;
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_NOT_EQ: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left != Right;
+    objectStackPush(Bool);
+  } break;
+  default: {
+    objectStackPush(NewError("Uknown operator in integer infix expression: %s",
+                             FluffTokenType [ Op ]));
+  }
+  }
+  /* leave result/error on stack as the return value */
+}
+
+/* Helper functon fo infix expressions for numbers.
+ * This particular version of the helper function should be called when
+ * both the left and right side of the expression are int and double
+ * respectively.
+ *
+ * @return: number containing the evaluated double or error on the stack */
+evalNumberInfixExpressionid(fluff_token_type Op, int Left, double Right) {
+  switch (Op) {
+  case TOKEN_PLUS: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_DOUBLE;
+    Num->Dbl = Left + Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_MINUS: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_DOUBLE;
+    Num->Dbl = Left - Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_SLASH: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_DOUBLE;
+    Num->Dbl = Left / Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_ASTERISK: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_DOUBLE;
+    Num->Dbl = Left * Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_LT: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left < Right;
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_GT: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left > Right;
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_EQ: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left == Right;
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_NOT_EQ: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left != Right;
+    objectStackPush(Bool);
+  } break;
+  default: {
+    objectStackPush(NewError("Uknown operator in integer infix expression: %s",
+                             FluffTokenType [ Op ]));
+  }
+  }
+  /* leave result/error on stack as the return value */
+}
+
+/* Helper functon fo infix expressions for numbers.
+ * This particular version of the helper function should be called when
+ * both the left and right side of the expression are double and int
+ * respectively.
+ *
+ * @return: number containing the evaluated double or error on the stack */
+evalNumberInfixExpressiondi(fluff_token_type Op, double Left, int Right) {
+  switch (Op) {
+  case TOKEN_PLUS: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_DOUBLE;
+    Num->Dbl = Left + Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_MINUS: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_DOUBLE;
+    Num->Dbl = Left - Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_SLASH: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_DOUBLE;
+    Num->Dbl = Left / Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_ASTERISK: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_DOUBLE;
+    Num->Dbl = Left * Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_LT: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left < Right;
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_GT: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left > Right;
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_EQ: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left == Right;
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_NOT_EQ: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left != Right;
+    objectStackPush(Bool);
+  } break;
+  default: {
+    objectStackPush(NewError("Uknown operator in integer infix expression: %s",
+                             FluffTokenType [ Op ]));
+  }
+  }
+  /* leave result/error on stack as the return value */
+}
+
+/* Helper functon fo infix expressions for numbers.
+ * This particular version of the helper function should be called when
+ * both the left and right side of the expression are doubles.
+ *
+ * @return: number containing the evaluated double or error on the stack */
+evalNumberInfixExpressiondd(fluff_token_type Op, double Left, double Right) {
+  switch (Op) {
+  case TOKEN_PLUS: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_DOUBLE;
+    Num->Dbl = Left + Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_MINUS: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_DOUBLE;
+    Num->Dbl = Left - Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_SLASH: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_DOUBLE;
+    Num->Dbl = Left / Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_ASTERISK: {
+    object_number * Num = NewNumber();
+    Num->Type = NUM_DOUBLE;
+    Num->Dbl = Left * Right;
+    objectStackPush(Num);
+  } break;
+  case TOKEN_LT: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left < Right;
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_GT: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left > Right;
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_EQ: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left == Right;
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_NOT_EQ: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = Left != Right;
+    objectStackPush(Bool);
+  } break;
+  default: {
+    objectStackPush(NewError("Uknown operator in integer infix expression: %s",
+                             FluffTokenType [ Op ]));
+  }
+  }
+  /* leave result/error on stack as the return value */
+}
+
+/* Evaluates an infix expression between two numbers.
+ * The Left object of the infix expression (top of the stack) is expected to be a number.
+ *
+ * @return: an object containing the evaluated number on the stack */
+void evalNumberInfixExpression(fluff_token_type Op) {
+  object * LeftObj = objectStackPop();
+  object * RightObj = objectStackPop();
+
+  if (LeftObj->Type != RightObj->Type) {
+    objectStackPush(NewError("unknown operator: %s %s %s",
+                             FluffObjectType[LeftObj->Type],
+                             FluffTokenType[Op],
+                             FluffObjectType[RightObj->Type]));
+    return;
+  }
+  object_number * LeftNum = (object_number *) LeftObj;
+  object_number * RightNum = (object_number *) RightObj;
+
+  if (LeftNum->Type == NUM_INTEGER && RightNum->Type == NUM_INTEGER) {
+    evalNumberInfixExpressionii(Op, LeftNum->Int, RightNum->Int);
+  } else if (LeftNum->Type == NUM_INTEGER && RightNum->Type == NUM_DOUBLE) {
+    evalNumberInfixExpressionid(Op, LeftNum->Int, RightNum->Dbl);
+  } else if (LeftNum->Type == NUM_DOUBLE && RightNum->Type == NUM_INTEGER) {
+    evalNumberInfixExpressiondi(Op, LeftNum->Dbl, RightNum->Int);
+  } else {
+    evalNumberInfixExpressiondd(Op, LeftNum->Dbl, RightNum->Dbl);
+  } 
+  /* leave result/error on stack as the return value */
+}
+
+/* Evaluates an infix expression between two booleans.
+ * The Left object of the infix expression (top of the stack) is expected to be a boolean.
+ *
+ * @return: an object containing the evaluated number on the stack */
+void evalBooleanInfixExpression(fluff_token_type Op) {
+  object * LeftObj = objectStackPop();
+  object * RightObj = objectStackPop();
+
+  if (LeftObj->Type != RightObj->Type) {
+    objectStackPush(NewError("unknown operator: %s %s %s",
+                             FluffObjectType[LeftObj->Type],
+                             FluffTokenType[Op],
+                             FluffObjectType[RightObj->Type]));
+    return;
+  }
+
+  object_boolean * LeftBool = (object_boolean *) LeftObj;
+  object_boolean * RightBool = (object_boolean *) RightObj;
+
+  switch (Op) {
+  case TOKEN_EQ: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = LeftBool->Value == RightBool->Value;
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_NOT_EQ: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = LeftBool->Value != RightBool->Value;
+    objectStackPush(Bool);
+  } break;
+  default: {
+    objectStackPush(NewError("Uknown operator in boolean infix expression: %s",
+                             FluffTokenType [ Op ]));
+  } break;
+  }
+  /* leave result/error on stack as the return value */
+}
+
+/* Evaluates an infix expression between two strings.
+ * The Left object of the infix expression (top of the stack) is expected to be a string.
+ *
+ * @return: an object containing the evaluated string or bool on the stack depending on the
+            operation */
+void evalStringInfixExpression(fluff_token_type Op) {
+  object * LeftObj = objectStackPop();
+  object * RightObj = objectStackPop();
+
+  if (LeftObj->Type != RightObj->Type) {
+    objectStackPush(NewError("unknown operator: %s %s %s",
+                             FluffObjectType[LeftObj->Type],
+                             FluffTokenType[Op],
+                             FluffObjectType[RightObj->Type]));
+    return;
+  }
+
+  object_string * LeftStr = (object_string *) LeftObj;
+  object_string * RightStr = (object_string *) RightObj;
+
+  switch (Op) {
+  case TOKEN_PLUS: {
+    int LeftSize = strlen(LeftStr->Value);
+    int RightSize = strlen(RightStr->Value);
+    int Size = LeftSize + RightSize + 1;
+
+    object_string * Str = NewString(Size);
+    memcpy(Str->Value, LeftStr->Value, LeftSize);
+    memcpy(Str->Value + LeftSize, RightStr->Value, RightSize);
+    Str->Value[Size - 1] = '\0';
+
+    objectStackPush(Str);
+  } break;
+  case TOKEN_EQ: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = (0 == strcmp(LeftStr->Value, RightStr->Value));
+
+    objectStackPush(Bool);
+  } break;
+  case TOKEN_NOT_EQ: {
+    object_boolean * Bool = NewBoolean();
+    Bool->Value = (0 != strcmp(LeftStr->Value, RightStr->Value));
+
+    objectStackPush(Bool);
+  } break;
+  default: {
+    objectStackPush(NewError("Uknown operator in string infix expression: %s",
+                             FluffTokenType [ Op ]));
+  }
+  }
+}
 

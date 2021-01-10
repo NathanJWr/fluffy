@@ -1,4 +1,4 @@
-object *NewObject(object_type Type, unsigned int Size) {
+object *NewObject(object_type Type, size_t Size) {
   object *Obj = GCMalloc(Size);
   memset(Obj, 0, Size);
   Obj->Type = Type;
