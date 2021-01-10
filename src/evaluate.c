@@ -20,11 +20,9 @@ object ***evalArrayItems(ast_base **Items, environment *Env,
 void evalPrefix(ast_prefix_expression * Prefix, environment *Env);
 object *evalPrefixExpression(fluff_token_type Op, object *Obj);
 void evalIfExpression(ast_if_expression * IfExpr, environment *Env);
-object *evalReturnStatement(ast_base *Node, environment *Env,
-                            executing_block *ExecBlock);
-object *evalVarStatement(ast_base *Node, environment *Env,
-                         executing_block *ExecBlock);
-object *evalIdentifier(ast_base *Node, environment *Env);
+void evalReturnStatement(ast_return_statement * ReturnStatement, environment *Env);
+void evalVarStatement(ast_var_statement * VarStatement, environment *Env);
+void evalIdentifier(ast_identifier * Ident, environment *Env);
 object *evalFunctionLiteral(ast_base *Node, environment *Env,
                             executing_block *ExecBlock);
 object *evalFunction(ast_base *Node, environment *Env,
@@ -130,6 +128,15 @@ void internalEval(ast_base * Node, environment * Env) {
   } break;
   case AST_IF_EXPRESSION: {
     evalIfExpression((ast_if_expression *) Node, Env);
+  } break;
+  case AST_RETURN_STATEMENT: {
+    evalReturnStatement((ast_return_statement *) Node, Env);
+  } break;
+  case AST_VAR_STATEMENT: {
+    evalVarStatement((ast_var_statement *) Node, Env);
+  } break;
+  case AST_IDENTIFIER: {
+    evalIdentifier((ast_identifier *) Node, Env);
   } break;
   }
 }
@@ -758,6 +765,9 @@ bool isTruthy(object *Obj) {
   }
 }
 
+/* Evaluates an if expression.
+ * 
+ * @return: null object or error on the stack */
 void evalIfExpression(ast_if_expression * IfExpr, environment *Env) {
   internalEvalReturnIfError(IfExpr->Condition, Env);
   object * Condition = objectStackPop();
@@ -769,4 +779,48 @@ void evalIfExpression(ast_if_expression * IfExpr, environment *Env) {
     objectStackPush(&NullObject);
   }
   /* leave result/error on stack as the return value */
+}
+
+/* Evaluates a return statement.
+ *
+ * @return: a return object containing the evaluated expression or and error */
+void evalReturnStatement(ast_return_statement * ReturnStatement, environment *Env) {
+  internalEvalReturnIfError(ReturnStatement->Expr, Env);
+  object_return * Return = NewReturn();
+  Return->Retval = objectStackPop();
+  objectStackPush(Return);
+  /* leave result/error on stack as the return value */
+}
+
+/* Evaluates a var statement by adding an entry into the environment that is specified.
+ * 
+ * @return: an error if the variable exists OR null object on the stack */
+void evalVarStatement(ast_var_statement * VarStatement, environment *Env) {
+  internalEvalReturnIfError(VarStatement->Value, Env);
+  object * EvaluatedObj = objectStackPop();
+  if (!FindInEnv(Env, VarStatement->Name->Value)) {
+    AddToEnv(Env, VarStatement->Name->Value, EvaluatedObj);
+    objectStackPush(&NullObject);
+  } else {
+    objectStackPush(NewError("variable %s already exists!", VarStatement->Name->Value));
+  }
+  /* leave result/error on stack as the return value */
+}
+
+void evalIdentifier(ast_identifier * Ident, environment *Env) {
+  /* Check if the identifier exists in the current Env */
+  object * EnvObject = FindInEnv(Env, Ident->Value);
+  if (EnvObject) {
+    objectStackPush (EnvObject);
+    return;
+  }
+
+  /* Check if the identifier exists in the builtin env */
+  EnvObject = FindInEnv(&BuiltinEnv, Ident->Value);
+  if (EnvObject) {
+    objectStackPush(EnvObject);
+  } else {
+    objectStackPush(NewError("could not find identifier: %s", Ident->Value));
+  }
+  /* leave result/error of the builtin env lookup on stack as the return value */
 }
