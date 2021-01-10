@@ -81,9 +81,9 @@ void AstBlockDelete(ast_block_statement *Block) {
 
 void AstIfExpressionDelete(ast_if_expression *Expr) {
   AstNodeDelete(Expr->Condition);
-  AstNodeDelete(Expr->Consequence);
+  AstNodeDelete((ast_base *) Expr->Consequence);
   if (Expr->Alternative)
-    AstNodeDelete(Expr->Alternative);
+    AstNodeDelete((ast_base *) Expr->Alternative);
   free(Expr);
 }
 
@@ -91,10 +91,10 @@ void AstFunctionLiteralDelete(ast_function_literal *Func) {
   unsigned int ParametersSize = ArraySize(Func->Parameters);
   unsigned int i;
   for (i = 0; i < ParametersSize; i++) {
-    AstNodeDelete(Func->Parameters[i]);
+    AstNodeDelete((ast_base *) Func->Parameters[i]);
   }
-  ArrayFree(Func->Parameters);
-  AstNodeDelete(Func->Body);
+  ArrayFree((ast_base *) Func->Parameters);
+  AstNodeDelete((ast_base *) Func->Body);
   free(Func);
 }
 

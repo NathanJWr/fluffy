@@ -55,9 +55,9 @@ ast_base *parseFunctionCallExppression(parser *Parser, ast_base *left);
 ast_base *parseIndexExpression(parser *Parser, ast_base *left);
 
 /* Helper parsing function */
-ast_base *parseBlockStatement(parser *Parser);
+ast_block_statement *parseBlockStatement(parser *Parser);
 ast_base **parseFunctionCallArguments(parser *Parser);
-ast_base **parseFunctionArguments(parser *Parser);
+ast_identifier **parseFunctionArguments(parser *Parser);
 ast_base **parseArrayItems(parser *Parser);
 void debugPrintAstNode(ast_base *Node);
 
@@ -589,8 +589,8 @@ ast_base *parseFunctionLiteral(parser *Parser) {
 
 /* helper function to parse a function's arguments
  * Note: these arguments should all be Identifiers */
-ast_base **parseFunctionArguments(parser *Parser) {
-  ast_base **Identifiers = NULL;
+ast_identifier **parseFunctionArguments(parser *Parser) {
+  ast_identifier **Identifiers = NULL;
   ast_identifier *Ident;
 
   if (Parser->PeekToken == TOKEN_RPAREN) {
@@ -603,7 +603,7 @@ ast_base **parseFunctionArguments(parser *Parser) {
   Ident = (ast_identifier *)astBaseNodeCreate(Parser, sizeof(ast_identifier),
                                               AST_IDENTIFIER);
   Ident->Value = Parser->CurString;
-  ArrayPush(Identifiers, (ast_base *)Ident);
+  ArrayPush(Identifiers, Ident);
 
   /* keep parsing identifiers until we don't see commas */
   while (Parser->PeekToken == TOKEN_COMMA) {
@@ -613,7 +613,7 @@ ast_base **parseFunctionArguments(parser *Parser) {
     Ident = (ast_identifier *)astBaseNodeCreate(Parser, sizeof(ast_identifier),
                                                 AST_IDENTIFIER);
     Ident->Value = Parser->CurString;
-    ArrayPush(Identifiers, (ast_base *)Ident);
+    ArrayPush(Identifiers, Ident);
   }
 
   if (Parser->PeekToken != TOKEN_RPAREN) {
@@ -626,7 +626,7 @@ ast_base **parseFunctionArguments(parser *Parser) {
 
 /* parses a list of statements that are contained within curly brackets
  * e.g. { true; false; 1 + 2; } */
-ast_base *parseBlockStatement(parser *Parser) {
+ast_block_statement *parseBlockStatement(parser *Parser) {
   ast_block_statement *Block = (ast_block_statement *)astBaseNodeCreate(
       Parser, sizeof(ast_block_statement), AST_BLOCK_STATEMENT);
   Block->Statements = NULL;
@@ -640,7 +640,7 @@ ast_base *parseBlockStatement(parser *Parser) {
     nextToken(Parser);
   }
 
-  return (ast_base *)Block;
+  return Block;
 }
 
 /* Pretty prints ast nodes */
@@ -736,12 +736,12 @@ void debugPrintAstNode(ast_base *Node) {
     printf("if(");
     debugPrintAstNode(Expr->Condition);
     printf(") {");
-    debugPrintAstNode(Expr->Consequence);
+    debugPrintAstNode((ast_base *) Expr->Consequence);
     printf("}");
 
     if (Expr->Alternative) {
       printf("else {");
-      debugPrintAstNode(Expr->Consequence);
+      debugPrintAstNode((ast_base *) Expr->Consequence);
       printf("}");
     }
   } break;
@@ -766,14 +766,14 @@ void debugPrintAstNode(ast_base *Node) {
     /* Print parameters separated by commas */
     if (Func->Parameters) {
       for (i = 0; i < ArraySize(Func->Parameters) - 1; i++) {
-        debugPrintAstNode(Func->Parameters[i]);
+        debugPrintAstNode((ast_base *) Func->Parameters[i]);
         printf(", ");
       }
-      debugPrintAstNode(Func->Parameters[i]);
+      debugPrintAstNode((ast_base *) Func->Parameters[i]);
     }
     /* Print the body statements */
     printf(") { ");
-    debugPrintAstNode(Func->Body);
+    debugPrintAstNode((ast_base *) Func->Body);
     printf(" }");
   } break;
   case AST_FUNCTION_CALL: {

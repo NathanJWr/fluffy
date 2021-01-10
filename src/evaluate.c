@@ -23,8 +23,7 @@ void evalIfExpression(ast_if_expression * IfExpr, environment *Env);
 void evalReturnStatement(ast_return_statement * ReturnStatement, environment *Env);
 void evalVarStatement(ast_var_statement * VarStatement, environment *Env);
 void evalIdentifier(ast_identifier * Ident, environment *Env);
-object *evalFunctionLiteral(ast_base *Node, environment *Env,
-                            executing_block *ExecBlock);
+void evalFunctionLiteral(ast_function_literal * FunctionLiteral, environment *Env);
 object *evalFunction(ast_base *Node, environment *Env,
                      executing_block *ExecBlock);
 object *evalIndexExpression(ast_base *Node, environment *Env,
@@ -137,6 +136,9 @@ void internalEval(ast_base * Node, environment * Env) {
   } break;
   case AST_IDENTIFIER: {
     evalIdentifier((ast_identifier *) Node, Env);
+  } break;
+  case AST_FUNCTION_LITERAL: {
+    evalFunctionLiteral((ast_function_literal *) Node, Env);
   } break;
   }
 }
@@ -772,9 +774,9 @@ void evalIfExpression(ast_if_expression * IfExpr, environment *Env) {
   internalEvalReturnIfError(IfExpr->Condition, Env);
   object * Condition = objectStackPop();
   if (isTruthy(Condition)) {
-    internalEvalReturnIfError(IfExpr->Consequence, Env);
+    evalBlock(IfExpr->Consequence, Env);
   } else if (IfExpr->Alternative) {
-    internalEvalReturnIfError(IfExpr->Alternative, Env);
+    evalBlock(IfExpr->Alternative, Env);
   } else {
     objectStackPush(&NullObject);
   }
@@ -823,4 +825,20 @@ void evalIdentifier(ast_identifier * Ident, environment *Env) {
     objectStackPush(NewError("could not find identifier: %s", Ident->Value));
   }
   /* leave result/error of the builtin env lookup on stack as the return value */
+}
+
+/* Evaluates a function literal ast node by storing the parameter, body, and
+ * environment information that is given. This information is then used whenever
+ * the function literal is invoked.
+ *
+ * @return: a function literal object on the stack */
+void evalFunctionLiteral(ast_function_literal * FunctionLiteral, environment *Env) {
+  object_function * Function = NewFunction();
+
+  Function->Parameters = FunctionLiteral->Parameters;
+  Function->Body = FunctionLiteral->Body;
+  Function->Env = Env;
+
+  objectStackPush(Function);
+  /* leave object on stack as the return value */
 }

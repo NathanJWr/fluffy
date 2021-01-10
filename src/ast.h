@@ -84,22 +84,22 @@ typedef struct {
 typedef struct {
   ast_base Base;
 
-  ast_base *Condition;
-  ast_base *Consequence;
-  ast_base *Alternative;
-} ast_if_expression;
-
-typedef struct {
-  ast_base Base;
-
   ast_base **Statements;
 } ast_block_statement;
 
 typedef struct {
   ast_base Base;
 
-  ast_base **Parameters;
-  ast_base *Body;
+  ast_base *Condition;
+  ast_block_statement *Consequence;
+  ast_block_statement *Alternative;
+} ast_if_expression;
+
+typedef struct {
+  ast_base Base;
+
+  ast_identifier **Parameters;
+  ast_block_statement *Body;
 } ast_function_literal;
 
 typedef struct {
