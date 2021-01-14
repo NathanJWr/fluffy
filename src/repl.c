@@ -60,7 +60,7 @@ int main() {
     StringStoreSize -= Lexer.StringStorage - StringStore;
     StringStore = Lexer.StringStorage;
 
-    GCMarkAndSweep(Env);
+    GCMarkAndSweep(Env, NULL, 0);
   }
 
   for (i = 0; i < ArraySize(Programs); i++) {

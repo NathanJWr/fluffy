@@ -115,10 +115,13 @@ size_t debugGetGCAllocationSize() {
   return Size;
 }
 
-void GCMarkAndSweep(environment *RootEnv) {
+void GCMarkAndSweep(environment *RootEnv, object ** Stack, int StackSize) {
   AllocationsSinceSweep = 0;
   printf("GC Allocated: %zu bytes\n", debugGetGCAllocationSize());
   EnvironmentMark(RootEnv);
+  for (int i = 0; i < StackSize; i++) {
+    markObject(Stack [ i ]);
+  }
   GCSweep();
   printf("GC Allocated After Sweep: %zu bytes\n", debugGetGCAllocationSize());
 }

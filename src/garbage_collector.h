@@ -27,5 +27,5 @@ void *GCMalloc(size_t Size);
 void *GCRealloc(void *Allocation, unsigned int Size);
 void GCMarkAllocation(void *Allocation);
 bool GCMarked(void *Allocation);
-void GCMarkAndSweep(environment *RootEnv);
+void GCMarkAndSweep(environment *RootEnv, object ** Stack, int StackSize);
 bool GCNeedsCleanup();

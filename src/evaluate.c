@@ -99,6 +99,7 @@ object *Eval(ast_base *Node, environment *Env) {
 }
 
 void internalEval(ast_base * Node, environment * Env) {
+  GCMarkAndSweep(RootEnv, ObjectStack, ObjectStackSize);
   switch (Node->Type) {
   case AST_PROGRAM: {
     evalProgram((ast_program *) Node, Env);
