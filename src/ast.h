@@ -113,7 +113,7 @@ typedef struct {
 typedef struct {
   ast_base Base;
 
-  ast_base *FunctionName;
+  ast_identifier *FunctionName;
   ast_base **Arguments;
 } ast_function_call;
 

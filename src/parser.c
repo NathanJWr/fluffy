@@ -354,7 +354,7 @@ ast_base *parseIndexExpression(parser *Parser, ast_base *Left) {
 ast_base *parseFunctionCallExppression(parser *Parser, ast_base *left) {
   ast_function_call *Call = (ast_function_call *)astBaseNodeCreate(
       Parser, sizeof(ast_function_call), AST_FUNCTION_CALL);
-  Call->FunctionName = left;
+  Call->FunctionName = (ast_identifier *) left;
   Call->Arguments = parseFunctionCallArguments(Parser);
   return (ast_base *)Call;
 }

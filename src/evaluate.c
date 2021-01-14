@@ -24,8 +24,7 @@ void evalReturnStatement(ast_return_statement * ReturnStatement, environment *En
 void evalVarStatement(ast_var_statement * VarStatement, environment *Env);
 void evalIdentifier(ast_identifier * Ident, environment *Env);
 void evalFunctionLiteral(ast_function_literal * FunctionLiteral, environment *Env);
-object *evalFunction(ast_base *Node, environment *Env,
-                     executing_block *ExecBlock);
+void evalFunction(ast_function_call * FunctionCall, environment *Env);
 object *evalIndexExpression(ast_base *Node, environment *Env,
                             executing_block *ExecBlock);
 object *evalClassStatement(ast_base *Node, environment *Env,
@@ -48,7 +47,7 @@ void evalNumberInfixExpression(fluff_token_type Op);
 void evalStringInfixExpression(fluff_token_type Op);
 void evalBooleanInfixExpression(fluff_token_type Op);
 bool isTruthy(object *Obj);
-object *applyFunction(object *Fn, object **Args, executing_block *ExecBlock);
+void applyFunction(void);
 environment *extendFnEnv(object_function *Fn, object **Args,
                          unsigned int ArgsLength);
 object *unwrapReturnValue(object *Obj);
@@ -140,6 +139,12 @@ void internalEval(ast_base * Node, environment * Env) {
   case AST_FUNCTION_LITERAL: {
     evalFunctionLiteral((ast_function_literal *) Node, Env);
   } break;
+  case AST_FUNCTION_CALL: {
+    evalFunction((ast_function_call *) Node, Env);
+  } break;
+  default: {
+    objectStackPush(NewError("Cannot evaluate %s", AstType [ Node->Type ]));
+  }
   }
 }
 
@@ -841,4 +846,66 @@ void evalFunctionLiteral(ast_function_literal * FunctionLiteral, environment *En
 
   objectStackPush(Function);
   /* leave object on stack as the return value */
+}
+
+void evalFunction(ast_function_call * FunctionCall, environment *Env) {
+  object_function_instance * FunctionInstance = NewFunctionInstance();
+  objectStackPush(FunctionInstance); /* Save the instance on the stack */
+
+  /* look up the previously defined function */
+  evalIdentifier(FunctionCall->FunctionName, Env) ;
+  object * Function = objectStackPeek();
+  if (Function->Type != FLUFF_OBJECT_FUNCTION) {
+    if (Function->Type == FLUFF_OBJECT_ERROR) {
+      return; /* pass along the error */
+    } else {
+      objectStackPush(NewError("expected identifier %s to reference a function",
+                               FunctionCall->FunctionName));
+      return;
+    }
+  }
+  FunctionInstance->Function = (object_function *) objectStackPop();
+  
+  /* create a new enclosed environment for the function instance */
+  FunctionInstance->Env = CreateEnclosedEnvironment(FunctionInstance->Function->Env);
+
+  /* evaluate the arguments passed to the function */
+  ast_base ** FunctionArgs = FunctionCall->Arguments;
+  size_t FunctionArgsLength = ArraySize(FunctionArgs);
+  FunctionInstance->EvaluatedArguments = NULL;
+  for (size_t i = 0; i < FunctionArgsLength; i++) {
+    internalEvalReturnIfError(FunctionArgs [ i ], Env);
+    object * Param = objectStackPop();
+    ArrayPush(FunctionInstance->EvaluatedArguments, Param); 
+    AddToEnv(FunctionInstance->Env,
+             FunctionInstance->Function->Parameters [ i ]->Value,
+             Param);
+  }
+
+  
+  applyFunction();
+}
+
+void applyFunction(void) {
+  object * Arg = objectStackPeek();
+
+  /* Make sure our Arg is a function instance */
+  if (Arg->Type != FLUFF_OBJECT_FUNCTION_INSTANCE) {
+    objectStackPop();
+    objectStackPush(NewError("not a function: %s", FluffObjectType [ Arg->Type ]));
+    return;
+  }
+  object_function_instance * FunctionInstance = (object_function_instance *) Arg;
+
+  /* Check that we were passed the correct number of arguments */
+  size_t NumParameters = ArraySize(FunctionInstance->EvaluatedArguments);
+  size_t NumExpectedParameters = ArraySize(FunctionInstance->Function->Parameters);
+  if (NumParameters != NumExpectedParameters) {
+    objectStackPush(NewError(
+        "invalid number of arguments to fn: expected %d, recieved %d",
+        NumExpectedParameters, NumParameters));
+    return;
+  }
+
+  evalBlock(FunctionInstance->Function->Body, FunctionInstance->Env);
 }

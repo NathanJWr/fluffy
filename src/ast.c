@@ -101,7 +101,7 @@ void AstFunctionLiteralDelete(ast_function_literal *Func) {
 void AstFunctionCallDelete(ast_function_call *Call) {
   unsigned int ArgumentsSize = ArraySize(Call->Arguments);
   unsigned int i;
-  AstNodeDelete(Call->FunctionName);
+  AstNodeDelete((ast_base *) Call->FunctionName);
   for (i = 0; i < ArgumentsSize; i++) {
     AstNodeDelete(Call->Arguments[i]);
   }

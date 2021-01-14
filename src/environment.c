@@ -237,14 +237,18 @@ void markFunctionObject(object_function *Func) {
   if (!GCMarked(Func->Env)) {
     EnvironmentMark(Func->Env);
   }
+}
 
-  environment_linked *Env = Func->RecurEnvs;
-  while (Env) {
-    GCMarkAllocation(Env);
-    EnvironmentMark(Env->Env);
+void markFunctionInstanceObject(object_function_instance *Func) {
+  markFunctionObject(Func->Function);
 
-    Env = Env->Next;
+  object ** Args = Func->EvaluatedArguments;
+  size_t ArgsLength = ArraySize(Args);
+  for (size_t i = 0; i < ArgsLength; i++) {
+    markObject(Args [ i ]);
   }
+
+  EnvironmentMark(Func->Env);
 }
 
 void markObject(object *Obj) {
@@ -260,6 +264,10 @@ void markObject(object *Obj) {
   case FLUFF_OBJECT_FUNCTION: {
     object_function *Func = (object_function *)Obj;
     markFunctionObject(Func);
+  } break;
+
+  case FLUFF_OBJECT_FUNCTION_INSTANCE: {
+    markFunctionInstanceObject((object_function_instance *) Obj);
   } break;
 
   case FLUFF_OBJECT_ARRAY: {

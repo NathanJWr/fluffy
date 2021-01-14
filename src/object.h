@@ -12,6 +12,7 @@
   X(FLUFF_OBJECT_CLASS)                                                        \
   X(FLUFF_OBJECT_CLASS_INSTANTIATION)                                          \
   X(FLUFF_OBJECT_FILE)                                                         \
+  X(FLUFF_OBJECT_FUNCTION_INSTANCE)                                            \
   XX(OJECT_TYPE_LIST_COUNT)
 
 #define X(name) name,
@@ -106,9 +107,18 @@ typedef struct {
   ast_identifier **Parameters;
   ast_block_statement *Body;
   struct environment *Env;
-
-  environment_linked *RecurEnvs;
 } object_function;
+
+typedef struct {
+  object Base;
+
+  /* function to be instantiated */
+  object_function * Function;
+  /* arguments to be associated with the function parameters */
+  object ** EvaluatedArguments;
+  /* environment to store local variables (like the passed in parameters) */
+  struct environment *Env;
+} object_function_instance;
 
 typedef struct {
   object Base;
@@ -162,6 +172,8 @@ void PrintObject(object *Obj);
 #define NewString(StrSize)                                                     \
   ((object_string *)NewObject(FLUFF_OBJECT_STRING,                             \
                               sizeof(object_string) + StrSize))
+#define NewFunctionInstance()                                           \
+  ((object_function_instance *)NewObject(FLUFF_OBJECT_FUNCTION_INSTANCE, sizeof(object_function_instance)))
 object *NewStringCopy(const char *Str);
 
 static object_null NullObject = {
