@@ -149,11 +149,14 @@ void internalEval(ast_base * Node, environment * Env) {
   }
 }
 
+#define returnIfErrorOnStack() \
+  if ( ((object *) objectStackPeek())->Type == FLUFF_OBJECT_ERROR ) \
+    return;
+
 /* calls internal eval and returns if the object at the top of the stack is an error */
 #define internalEvalReturnIfError(Node, Env)  \
   internalEval(Node, Env); \
-  if ( ((object *) objectStackPeek())->Type == FLUFF_OBJECT_ERROR ) \
-    return;
+  returnIfErrorOnStack();
 
 /* calls internal eval and returns if the object at the top of the stack is an error 
  * or of type FLUFF_OBJECT_RETURN */
@@ -849,41 +852,74 @@ void evalFunctionLiteral(ast_function_literal * FunctionLiteral, environment *En
   /* leave object on stack as the return value */
 }
 
-void evalFunction(ast_function_call * FunctionCall, environment *Env) {
-  object_function_instance * FunctionInstance = NewFunctionInstance();
-  objectStackPush(FunctionInstance); /* Save the instance on the stack */
-
-  /* look up the previously defined function */
-  evalIdentifier(FunctionCall->FunctionName, Env) ;
+void lookupFunctionInEnvironment(ast_identifier *Ident, environment * Env) {
+  evalIdentifier(Ident, Env) ;
   object * Function = objectStackPeek();
   if (Function->Type != FLUFF_OBJECT_FUNCTION) {
     if (Function->Type == FLUFF_OBJECT_ERROR) {
       return; /* pass along the error */
     } else {
       objectStackPush(NewError("expected identifier %s to reference a function",
-                               FunctionCall->FunctionName));
+                               Ident->Value));
       return;
     }
   }
-  FunctionInstance->Function = (object_function *) objectStackPop();
-  
-  /* create a new enclosed environment for the function instance */
-  FunctionInstance->Env = CreateEnclosedEnvironment(FunctionInstance->Function->Env);
+  /* leave object on stack as the return value */
+}
 
-  /* evaluate the arguments passed to the function */
-  ast_base ** FunctionArgs = FunctionCall->Arguments;
-  size_t FunctionArgsLength = ArraySize(FunctionArgs);
-  FunctionInstance->EvaluatedArguments = NULL;
+void evaluateFunctionArguments(ast_base ** FunctionArgs,
+                               size_t FunctionArgsLength,
+                               object *** EvaluatedArguments,
+                               environment * Env) {
   for (size_t i = 0; i < FunctionArgsLength; i++) {
     internalEvalReturnIfError(FunctionArgs [ i ], Env);
     object * Param = objectStackPop();
-    ArrayPush(FunctionInstance->EvaluatedArguments, Param); 
-    AddToEnv(FunctionInstance->Env,
-             FunctionInstance->Function->Parameters [ i ]->Value,
-             Param);
+    ArrayPush(*EvaluatedArguments, Param); 
   }
+}
 
-  
+void addObjectsToEnvironment(object ** Params,
+                             ast_identifier ** ParamNames,
+                             size_t ParamsLength,
+                             environment * Env) {
+  for (size_t i = 0; i < ParamsLength; i++) {
+    AddToEnv(Env,
+             ParamNames [ i ]->Value,
+             Params [ i ]);
+  }
+}
+
+void checkPassedArgumentSizeMatchesExpectedArguments(size_t NumExpectedParameters, size_t NumParameters) {
+  if (NumExpectedParameters != NumParameters) {
+    objectStackPush(NewError(
+        "invalid number of arguments to fn: expected %d, recieved %d",
+        NumExpectedParameters, NumParameters));
+    return;
+  }
+}
+
+void evalFunction(ast_function_call * FunctionCall, environment *Env) {
+  lookupFunctionInEnvironment(FunctionCall->FunctionName, Env);
+  returnIfErrorOnStack();
+
+  object_function_instance * FunctionInstance = NewFunctionInstance(objectStackPop());
+  objectStackPush(FunctionInstance); /* Save the instance on the stack */
+
+  /* Check that we were passed the correct number of arguments */
+  checkPassedArgumentSizeMatchesExpectedArguments(ArraySize(FunctionInstance->Function->Parameters),
+                                                  ArraySize(FunctionCall->Arguments));
+  returnIfErrorOnStack();
+
+  evaluateFunctionArguments(FunctionCall->Arguments,
+                            ArraySize(FunctionCall->Arguments),
+                            &FunctionInstance->EvaluatedArguments,
+                            Env);
+  returnIfErrorOnStack();
+
+  addObjectsToEnvironment(FunctionInstance->EvaluatedArguments,
+                          FunctionInstance->Function->Parameters,
+                          ArraySize(FunctionInstance->EvaluatedArguments),
+                          FunctionInstance->Env);
   applyFunction();
 }
 
@@ -898,15 +934,8 @@ void applyFunction(void) {
   }
   object_function_instance * FunctionInstance = (object_function_instance *) Arg;
 
-  /* Check that we were passed the correct number of arguments */
-  size_t NumParameters = ArraySize(FunctionInstance->EvaluatedArguments);
-  size_t NumExpectedParameters = ArraySize(FunctionInstance->Function->Parameters);
-  if (NumParameters != NumExpectedParameters) {
-    objectStackPush(NewError(
-        "invalid number of arguments to fn: expected %d, recieved %d",
-        NumExpectedParameters, NumParameters));
-    return;
-  }
-
   evalBlock(FunctionInstance->Function->Body, FunctionInstance->Env);
+  object * Retval = objectStackPop();
+  objectStackPop(); /* remove our function instance */
+  objectStackPush(Retval);
 }

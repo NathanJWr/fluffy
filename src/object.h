@@ -172,8 +172,14 @@ void PrintObject(object *Obj);
 #define NewString(StrSize)                                                     \
   ((object_string *)NewObject(FLUFF_OBJECT_STRING,                             \
                               sizeof(object_string) + StrSize))
-#define NewFunctionInstance()                                           \
-  ((object_function_instance *)NewObject(FLUFF_OBJECT_FUNCTION_INSTANCE, sizeof(object_function_instance)))
+
+object_function_instance * NewFunctionInstance(object_function * FunctionToInstantiate) {
+  object_function_instance * Instance =
+    ((object_function_instance *)NewObject(FLUFF_OBJECT_FUNCTION_INSTANCE, sizeof(object_function_instance)));
+  Instance->Function = FunctionToInstantiate;
+  Instance->Env = CreateEnclosedEnvironment(Instance->Function->Env);
+  return Instance;
+}
 object *NewStringCopy(const char *Str);
 
 static object_null NullObject = {

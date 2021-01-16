@@ -212,7 +212,6 @@ void markEnvironment(environment *Env) {
   GCMarkAllocation(Env->Objects);
 }
 
-void markObject(object *Obj);
 void markAllObjectsInEnv(environment *Env) {
   unsigned int i;
   for (i = 0; i < Env->ObjectsLength; i++) {
@@ -242,10 +241,8 @@ void markFunctionObject(object_function *Func) {
 void markFunctionInstanceObject(object_function_instance *Func) {
   markFunctionObject(Func->Function);
 
-  object ** Args = Func->EvaluatedArguments;
-  size_t ArgsLength = ArraySize(Args);
-  for (size_t i = 0; i < ArgsLength; i++) {
-    markObject(Args [ i ]);
+  for (size_t i = 0; i < ArraySize(Func->EvaluatedArguments); i++) {
+    markObject(Func->EvaluatedArguments [ i ]);
   }
 
   EnvironmentMark(Func->Env);

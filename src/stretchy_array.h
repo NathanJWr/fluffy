@@ -82,13 +82,13 @@ void ArrayFree(void *Array) {
 }
 
 #ifdef ARRAY_WITH_MEMCPY
-#define ArrayPush(a, item)                                                     \
-  {                                                                            \
-    stretchy_array_header ___Header;                                           \
-    arrayFull(a) ? a = arrayGrow(a, sizeof(*a)) : 0;                           \
-    memcpy(&___Header, arrayHeader(a), sizeof(stretchy_array_header));         \
-    a[___Header.Size++] = item;                                                \
-    memcpy(arrayHeader(a), &___Header, sizeof(stretchy_array_header));         \
+#define ArrayPush(a, item)                                              \
+  {                                                                     \
+    stretchy_array_header ___Header;                                    \
+    arrayFull((a)) ? (a) = arrayGrow((a), sizeof(*(a))) : 0;            \
+    memcpy(&___Header, arrayHeader((a)), sizeof(stretchy_array_header)); \
+    (a)[___Header.Size++] = item;                                       \
+    memcpy(arrayHeader(a), &___Header, sizeof(stretchy_array_header));  \
   }
 #endif
 
