@@ -34,3 +34,4 @@ environment *CreateEnclosedEnvironment(environment *Outer);
 void EnvironmentMark(environment *Env);
 object *FindInEnv(environment *Env, const char *Var);
 void markObject(object *Obj);
+bool isBucketEmpty(object_bucket *Objects, unsigned int Index);

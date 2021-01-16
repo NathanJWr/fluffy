@@ -29,3 +29,6 @@ void GCMarkAllocation(void *Allocation);
 bool GCMarked(void *Allocation);
 void GCMarkAndSweep(environment *RootEnv, object ** Stack, int StackSize);
 bool GCNeedsCleanup();
+
+void GCMarkObject(object * Obj);
+void GCMarkEnvironment(environment * Env);
