@@ -101,6 +101,10 @@ void InitEnv(environment *Env, unsigned int Size, mallocFunc MallocFunc,
   Env->Outer = NULL;
 }
 
+void FreeEnv(environment * Env) {
+  
+}
+
 void AddToEnv(environment *Env, const char *Var, object *Obj) {
   hashed_string HashedStr;
   unsigned int Index;
@@ -239,13 +243,10 @@ void markFunctionObject(object_function *Func) {
 }
 
 void markFunctionInstanceObject(object_function_instance *Func) {
-  markFunctionObject(Func->Function);
-
-  for (size_t i = 0; i < ArraySize(Func->EvaluatedArguments); i++) {
-    markObject(Func->EvaluatedArguments [ i ]);
+  if (!GCMarked(Func->Env)) {
+    EnvironmentMark(Func->Env);
   }
-
-  EnvironmentMark(Func->Env);
+  markFunctionObject(Func->Function);
 }
 
 void markObject(object *Obj) {

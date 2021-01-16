@@ -114,8 +114,6 @@ typedef struct {
 
   /* function to be instantiated */
   object_function * Function;
-  /* arguments to be associated with the function parameters */
-  object ** EvaluatedArguments;
   /* environment to store local variables (like the passed in parameters) */
   struct environment *Env;
 } object_function_instance;

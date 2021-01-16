@@ -869,23 +869,14 @@ void lookupFunctionInEnvironment(ast_identifier *Ident, environment * Env) {
 
 void evaluateFunctionArguments(ast_base ** FunctionArgs,
                                size_t FunctionArgsLength,
-                               object *** EvaluatedArguments,
+                               ast_identifier ** FunctionArgNames,
                                environment * Env) {
   for (size_t i = 0; i < FunctionArgsLength; i++) {
     internalEvalReturnIfError(FunctionArgs [ i ], Env);
-    object * Param = objectStackPop();
-    ArrayPush(*EvaluatedArguments, Param); 
-  }
-}
-
-void addObjectsToEnvironment(object ** Params,
-                             ast_identifier ** ParamNames,
-                             size_t ParamsLength,
-                             environment * Env) {
-  for (size_t i = 0; i < ParamsLength; i++) {
+    object * EvaluatedArgument = objectStackPop();
     AddToEnv(Env,
-             ParamNames [ i ]->Value,
-             Params [ i ]);
+             FunctionArgNames [ i ]->Value,
+             EvaluatedArgument);
   }
 }
 
@@ -912,14 +903,10 @@ void evalFunction(ast_function_call * FunctionCall, environment *Env) {
 
   evaluateFunctionArguments(FunctionCall->Arguments,
                             ArraySize(FunctionCall->Arguments),
-                            &FunctionInstance->EvaluatedArguments,
-                            Env);
+                            FunctionInstance->Function->Parameters,
+                            FunctionInstance->Env);
   returnIfErrorOnStack();
 
-  addObjectsToEnvironment(FunctionInstance->EvaluatedArguments,
-                          FunctionInstance->Function->Parameters,
-                          ArraySize(FunctionInstance->EvaluatedArguments),
-                          FunctionInstance->Env);
   applyFunction();
 }
 
