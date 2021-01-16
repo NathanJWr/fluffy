@@ -3,6 +3,10 @@ void markFunctionObject(object_function *Func);
 void markArrayObject(object_array *Arr);
 void markAllObjectsInEnv(environment *Env);
 void markEnvironment(environment *Env);
+void markReturnObject(object_return * Return);
+void markClassObject(object_class * Class);
+void markClassInstanceObject(object_class_instantiation * Instance);
+void markFileObject(object_file * File);
 
 void GCMarkEnvironment(environment *Env) {
   markEnvironment(Env);
@@ -11,52 +15,31 @@ void GCMarkEnvironment(environment *Env) {
 
 void GCMarkObject(object * Obj) {
   GCMarkAllocation(Obj);
+
   switch (Obj->Type) {
-  case FLUFF_OBJECT_RETURN: {
-    object_return *Ret = (object_return *)Obj;
-    if (Ret->Retval) {
-      GCMarkObject(Ret->Retval);
-    }
-  } break;
-
-  case FLUFF_OBJECT_FUNCTION: {
-    object_function *Func = (object_function *)Obj;
-    markFunctionObject(Func);
-  } break;
-
-  case FLUFF_OBJECT_FUNCTION_INSTANCE: {
+  case FLUFF_OBJECT_RETURN:
+    markReturnObject((object_return *) Obj);
+    break;
+  case FLUFF_OBJECT_FUNCTION:
+    markFunctionObject((object_function *) Obj);
+    break;
+  case FLUFF_OBJECT_FUNCTION_INSTANCE:
     markFunctionInstanceObject((object_function_instance *) Obj);
-  } break;
-
-  case FLUFF_OBJECT_ARRAY: {
-    object_array *Arr = (object_array *)Obj;
-    markArrayObject(Arr);
-  } break;
-
-  case FLUFF_OBJECT_CLASS: {
-    object_class *Class = (object_class *)Obj;
-    size_t VarLength = ArraySize(Class->Variables);
-
-    /* Don't need to iterate through array and mark
-     * each item because they are allocated in the ast */
-    GCArrayMarkAllocation(Class->Variables);
-
-    GCMarkEnvironment(Class->Base.MethodEnv);
-  } break;
-
-  case FLUFF_OBJECT_CLASS_INSTANTIATION: {
-    object_class_instantiation *Instance = (object_class_instantiation *)Obj;
-    GCMarkEnvironment(Instance->Locals);
-  } break;
-
-  case FLUFF_OBJECT_FILE: {
-    object_file *File = (object_file *)Obj;
-    GCMarkAllocation(File->File);
-  }
-
-  default: {
+    break;
+  case FLUFF_OBJECT_ARRAY:
+    markArrayObject((object_array *) Obj);
+    break;
+  case FLUFF_OBJECT_CLASS:
+    markClassObject((object_class *) Obj);
+    break;
+  case FLUFF_OBJECT_CLASS_INSTANTIATION:
+    markClassInstanceObject((object_class_instantiation *) Obj);
+    break;
+  case FLUFF_OBJECT_FILE:
+    markFileObject((object_file *) Obj);
+    break;
+  default:
     return;
-  }
   }
 }
 
@@ -96,4 +79,28 @@ void markFunctionInstanceObject(object_function_instance *Func) {
     GCMarkEnvironment(Func->Env);
   }
   markFunctionObject(Func->Function);
+}
+
+void markReturnObject(object_return * Return) {
+  if (Return->Retval) {
+    GCMarkObject(Return->Retval);
+  }
+}
+
+void markClassObject(object_class * Class) {
+  size_t VarLength = ArraySize(Class->Variables);
+
+  /* Don't need to iterate through array and mark
+   * each item because they are allocated in the ast */
+  GCArrayMarkAllocation(Class->Variables);
+
+  GCMarkEnvironment(Class->Base.MethodEnv);
+}
+
+void markClassInstanceObject(object_class_instantiation * Instance) {
+  GCMarkEnvironment(Instance->Locals);
+}
+
+void markFileObject(object_file * File) {
+  GCMarkAllocation(File->File);
 }
