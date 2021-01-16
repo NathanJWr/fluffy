@@ -45,6 +45,7 @@
 #include "src/ast.h"
 #include "src/object.h"
 #include "src/lexer.h"
+#include "src/garbage_marker.h"
 
 /* project c files */
 #include "src/garbage_collector.c"
@@ -59,6 +60,7 @@
 #include "src/object_system.c"
 #include "src/object_file.c"
 #include "src/evaluate.c"
+#include "src/garbage_marker.c"
 
 #include "src/repl.c"
 
