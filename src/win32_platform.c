@@ -1,7 +1,10 @@
 bool PlatformReadWholeFile(platform_file_handle *Handle, void *Buffer,
                            size_t BufferSize) {
+  /* TODO: This will only read files up to some 32bit size since ReadFile
+   * takes a DWORD for BufferSize. Look into this if really big file reads
+   * are a goal */
   DWORD BytesRead;
-  ReadFile(Handle->Handle, Buffer, BufferSize, &BytesRead, NULL);
+  ReadFile(Handle->Handle, Buffer, (DWORD) BufferSize, &BytesRead, NULL);
   if (BytesRead != BufferSize) {
     return false;
   }
@@ -19,7 +22,12 @@ size_t PlatformGetFileSize(platform_file_handle *Handle) {
 bool PlatformWriteFile(platform_file_handle *Handle, const char *Buff,
                        size_t BuffSize) {
   DWORD SizeWritten = 0;
-  bool Success = WriteFile(Handle->Handle, Buff, BuffSize, &SizeWritten, NULL);
+  /* TODO: This will only write files up to some 32bit size since ReadFile
+   * takes a DWORD for BufferSize. Look into this if really big file reads
+   * are a goal */
+  bool Success = WriteFile(Handle->Handle,
+                           Buff, (DWORD) BuffSize,
+                           &SizeWritten, NULL);
   /* Note(Nathan): WriteFile can return false, but not be in an error state if
    * an asynchronous handle is used */
 

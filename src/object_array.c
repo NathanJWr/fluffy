@@ -22,7 +22,7 @@ object *fluffMethodArrayLength(object **Args) {
   object_array *Arr = (object_array *)Args[0];
   object_number *Length = NewNumber();
   Length->Type = NUM_INTEGER;
-  Length->Int = ArraySize(Arr->Items);
+  Length->Int = (long) ArraySize(Arr->Items);
   return (object *)Length;
 }
 
@@ -34,7 +34,7 @@ object *fluffMethodArrayReverse(object **Args) {
   object_array *Arr = (object_array *)Args[0];
   object_array *ReversedArr = NewArray();
   ReversedArr->Items = NULL;
-  size_t ArrayLen = ArraySize(Arr->Items);
+  int ArrayLen = (int) ArraySize(Arr->Items);
   for (int i = ArrayLen - 1; i >= 0; i--) {
     GCArrayPush(ReversedArr->Items, Arr->Items[i]);
   }

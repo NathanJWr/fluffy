@@ -19,7 +19,7 @@ unsigned int getPrecedence(fluff_token_type Token);
 /* allocating functions */
 /* TODO(Nathan): Possible optimization -> pre-allocate larger chunks of memory
  */
-ast_base *astBaseNodeCreate(parser *P, unsigned int Size, ast_type Type);
+ast_base *astBaseNodeCreate(unsigned char Size, ast_type Type);
 
 /* basic top-level parse functions */
 void nextToken(parser *Parser);
@@ -84,8 +84,7 @@ void ParserInit(parser *Parser, lexer *Lexer) {
 }
 
 ast_program *ParseProgram(parser *Parser) {
-  ast_program *ProgramNode = (ast_program *)astBaseNodeCreate(
-      Parser, sizeof(ast_program), AST_PROGRAM);
+  ast_program *ProgramNode = (ast_program *)astBaseNodeCreate(sizeof(ast_program), AST_PROGRAM);
 
   ProgramNode->Statements = NULL;
   while (Parser->CurToken != TOKEN_END) {
@@ -116,7 +115,7 @@ ast_base *parseStatement(parser *Parser) {
 /* class statement:
  * "class { ... }" */
 ast_base *parseClassStatement(parser *Parser) {
-  ast_class *Class = (ast_class *)astBaseNodeCreate(Parser, sizeof(ast_class),
+  ast_class *Class = (ast_class *)astBaseNodeCreate(sizeof(ast_class),
                                                     AST_CLASS_STATEMENT);
 
   Class->Variables = NULL;
@@ -152,7 +151,7 @@ ast_base *parseClassStatement(parser *Parser) {
  * (e.g. var a = 1 + 1;) */
 ast_base *parseVarStatement(parser *Parser) {
   ast_var_statement *Stmt = (ast_var_statement *)astBaseNodeCreate(
-      Parser, sizeof(ast_var_statement), AST_VAR_STATEMENT);
+      sizeof(ast_var_statement), AST_VAR_STATEMENT);
 
   if (Parser->PeekToken != TOKEN_IDENT) {
     return NULL;
@@ -181,7 +180,7 @@ ast_base *parseVarStatement(parser *Parser) {
  * (e.g. return true;) */
 ast_base *parseRetStatement(parser *Parser) {
   ast_return_statement *Ret = (ast_return_statement *)astBaseNodeCreate(
-      Parser, sizeof(ast_return_statement), AST_RETURN_STATEMENT);
+      sizeof(ast_return_statement), AST_RETURN_STATEMENT);
   nextToken(Parser);
 
   Ret->Expr = parseExpression(Parser, PRECEDENCE_LOWEST);
@@ -310,7 +309,7 @@ InfixParseFunction findInfixParseFunction(fluff_token_type Token) {
  * passed as the Left parameter, with "+ 2" being what is parsed in this
  * function) */
 ast_base *parseInfixExpression(parser *Parser, ast_base *Left) {
-  ast_base *Node = astBaseNodeCreate(Parser, sizeof(ast_infix_expression),
+  ast_base *Node = astBaseNodeCreate(sizeof(ast_infix_expression),
                                      AST_INFIX_EXPRESSION);
   ast_infix_expression Infix;
   unsigned int Precedence = PrecedenceTable[Parser->CurToken];
@@ -328,7 +327,7 @@ ast_base *parseInfixExpression(parser *Parser, ast_base *Left) {
 
 ast_base *parseIndexExpression(parser *Parser, ast_base *Left) {
   ast_index *IndexExpr = (ast_index *)astBaseNodeCreate(
-      Parser, sizeof(ast_index), AST_INDEX_EXPRESSION);
+      sizeof(ast_index), AST_INDEX_EXPRESSION);
 
   nextToken(Parser);
   if (Left->Type == AST_IDENTIFIER) {
@@ -353,7 +352,7 @@ ast_base *parseIndexExpression(parser *Parser, ast_base *Left) {
  * it */
 ast_base *parseFunctionCallExppression(parser *Parser, ast_base *left) {
   ast_function_call *Call = (ast_function_call *)astBaseNodeCreate(
-      Parser, sizeof(ast_function_call), AST_FUNCTION_CALL);
+      sizeof(ast_function_call), AST_FUNCTION_CALL);
   Call->FunctionName = (ast_identifier *) left;
   Call->Arguments = parseFunctionCallArguments(Parser);
   return (ast_base *)Call;
@@ -393,7 +392,7 @@ ast_base **parseFunctionCallArguments(parser *Parser) {
 /* parses prefix expressions like !true and -1 */
 ast_base *parsePrefixExpression(parser *Parser) {
   ast_prefix_expression *Prefix = (ast_prefix_expression *)astBaseNodeCreate(
-      Parser, sizeof(ast_prefix_expression), AST_PREFIX_EXPRESSION);
+      sizeof(ast_prefix_expression), AST_PREFIX_EXPRESSION);
   Prefix->Operation = Parser->CurToken;
   nextToken(Parser);
   Prefix->Right = parseExpression(Parser, PRECEDENCE_PREFIX);
@@ -403,7 +402,7 @@ ast_base *parsePrefixExpression(parser *Parser) {
 /* parses an identifier (e.g. abc, foo, bar, etc.) */
 ast_base *parseIdentifier(parser *Parser) {
   ast_base *Node =
-      astBaseNodeCreate(Parser, sizeof(ast_identifier), AST_IDENTIFIER);
+      astBaseNodeCreate(sizeof(ast_identifier), AST_IDENTIFIER);
   ast_identifier Ident;
 
   /* Set the identifier string value */
@@ -417,7 +416,7 @@ ast_base *parseIdentifier(parser *Parser) {
 /* parses a string (e.g. "abc", "123", "boolean") */
 ast_base *parseString(parser *Parser) {
   ast_string *Str =
-      (ast_string *)astBaseNodeCreate(Parser, sizeof(ast_string), AST_STRING);
+      (ast_string *)astBaseNodeCreate(sizeof(ast_string), AST_STRING);
   Str->Value = Parser->CurString;
   return (ast_base *)Str;
 }
@@ -456,7 +455,7 @@ ast_base **parseArrayItems(parser *Parser) {
 /* parses an array (e.g. [1, 2, 3]) */
 ast_base *parseArray(parser *Parser) {
   ast_array_literal *Arr = (ast_array_literal *)astBaseNodeCreate(
-      Parser, sizeof(ast_array_literal), AST_ARRAY_LITERAL);
+      sizeof(ast_array_literal), AST_ARRAY_LITERAL);
 
   Arr->Items = parseArrayItems(Parser);
   return (ast_base *)Arr;
@@ -465,7 +464,7 @@ ast_base *parseArray(parser *Parser) {
 /* parses an integer (e.g. 123, 432, etc.) */
 ast_base *parseIntegerLiteral(parser *Parser) {
   ast_number *Integer =
-      (ast_number *)astBaseNodeCreate(Parser, sizeof(ast_number), AST_NUMBER);
+      (ast_number *)astBaseNodeCreate(sizeof(ast_number), AST_NUMBER);
 
   Integer->Type = NUM_INTEGER;
   Integer->Int = Parser->CurInteger;
@@ -475,7 +474,7 @@ ast_base *parseIntegerLiteral(parser *Parser) {
 /* parses a double (e.g. 1.23, 43.2, etc.) */
 ast_base *parseDoubleLiteral(parser *Parser) {
   ast_number *Double =
-      (ast_number *)astBaseNodeCreate(Parser, sizeof(ast_number), AST_NUMBER);
+      (ast_number *)astBaseNodeCreate(sizeof(ast_number), AST_NUMBER);
 
   Double->Type = NUM_DOUBLE;
   Double->Dbl = Parser->CurDouble;
@@ -485,7 +484,7 @@ ast_base *parseDoubleLiteral(parser *Parser) {
 /* parses booleans true and false */
 ast_base *parseBoolean(parser *Parser) {
   ast_boolean *Boolean = (ast_boolean *)astBaseNodeCreate(
-      Parser, sizeof(ast_boolean), AST_BOOLEAN);
+      sizeof(ast_boolean), AST_BOOLEAN);
 
   Boolean->Value = Parser->CurToken == TOKEN_TRUE;
 
@@ -509,7 +508,7 @@ ast_base *parseGroupedExpression(parser *Parser) {
 /* Parses if expressions as well as their possible else conditions */
 ast_base *parseIfExpression(parser *Parser) {
   ast_if_expression *IfExpr = (ast_if_expression *)astBaseNodeCreate(
-      Parser, sizeof(ast_if_expression), AST_IF_EXPRESSION);
+      sizeof(ast_if_expression), AST_IF_EXPRESSION);
 
   IfExpr->Alternative = NULL;
   if (Parser->PeekToken != TOKEN_LPAREN) {
@@ -550,7 +549,7 @@ ast_base *parseIfExpression(parser *Parser) {
  * "new Foo" */
 ast_base *parseNewExpression(parser *Parser) {
   ast_new_expression *New = (ast_new_expression *)astBaseNodeCreate(
-      Parser, sizeof(ast_new_expression), AST_NEW_EXPRESSION);
+      sizeof(ast_new_expression), AST_NEW_EXPRESSION);
   nextToken(Parser); /* move past the new token */
 
   ast_base *Expr = parseExpression(Parser, PRECEDENCE_LOWEST);
@@ -568,7 +567,7 @@ ast_base *parseNewExpression(parser *Parser) {
  * fn(a, b) { return true; } */
 ast_base *parseFunctionLiteral(parser *Parser) {
   ast_function_literal *Func = (ast_function_literal *)astBaseNodeCreate(
-      Parser, sizeof(ast_function_literal), AST_FUNCTION_LITERAL);
+      sizeof(ast_function_literal), AST_FUNCTION_LITERAL);
 
   if (Parser->PeekToken != TOKEN_LPAREN) {
     return NULL;
@@ -600,7 +599,7 @@ ast_identifier **parseFunctionArguments(parser *Parser) {
 
   /* create the first identifier */
   nextToken(Parser);
-  Ident = (ast_identifier *)astBaseNodeCreate(Parser, sizeof(ast_identifier),
+  Ident = (ast_identifier *)astBaseNodeCreate(sizeof(ast_identifier),
                                               AST_IDENTIFIER);
   Ident->Value = Parser->CurString;
   ArrayPush(Identifiers, Ident);
@@ -610,7 +609,7 @@ ast_identifier **parseFunctionArguments(parser *Parser) {
     nextToken(Parser);
     nextToken(Parser);
 
-    Ident = (ast_identifier *)astBaseNodeCreate(Parser, sizeof(ast_identifier),
+    Ident = (ast_identifier *)astBaseNodeCreate(sizeof(ast_identifier),
                                                 AST_IDENTIFIER);
     Ident->Value = Parser->CurString;
     ArrayPush(Identifiers, Ident);
@@ -628,7 +627,7 @@ ast_identifier **parseFunctionArguments(parser *Parser) {
  * e.g. { true; false; 1 + 2; } */
 ast_block_statement *parseBlockStatement(parser *Parser) {
   ast_block_statement *Block = (ast_block_statement *)astBaseNodeCreate(
-      Parser, sizeof(ast_block_statement), AST_BLOCK_STATEMENT);
+    sizeof(ast_block_statement), AST_BLOCK_STATEMENT);
   Block->Statements = NULL;
   nextToken(Parser);
 
@@ -653,11 +652,10 @@ void debugPrintAstNode(ast_base *Node) {
   } break;
   case AST_PROGRAM: {
     ast_program Program;
-    unsigned int StatementsSize;
     unsigned int i;
     memcpy(&Program, Node, sizeof(ast_program));
 
-    StatementsSize = ArraySize(Program.Statements);
+    size_t StatementsSize = ArraySize(Program.Statements);
     for (i = 0; i < StatementsSize; i++) {
       debugPrintAstNode(Program.Statements[i]);
     }
@@ -806,7 +804,7 @@ void debugPrintAstNode(ast_base *Node) {
 }
 
 /* Creates an ast node and sets the base Size and Type values */
-ast_base *astBaseNodeCreate(parser *P, unsigned int Size, ast_type Type) {
+ast_base *astBaseNodeCreate(unsigned char Size, ast_type Type) {
   ast_base *Ret = malloc(Size);
   Ret->Size = Size;
   Ret->Type = Type;

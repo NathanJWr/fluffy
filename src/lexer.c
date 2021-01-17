@@ -253,8 +253,4 @@ fluff_token_type readNumber(lexer *Lexer) {
     break;
   }
   }
-  if (End == Num) {
-    fprintf(stderr, "no digits were found\n");
-    exit(EXIT_FAILURE);
-  }
 }

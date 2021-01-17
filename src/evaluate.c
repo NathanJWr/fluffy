@@ -386,7 +386,7 @@ void evalInfix(ast_infix_expression * Infix, environment *Env) {
  * both the left and right side of the expression are integers
  *
  * @return: number containing the evaluated integer or error on the stack */
-evalNumberInfixExpressionii(fluff_token_type Op, int Left, int Right) {
+void evalNumberInfixExpressionii(fluff_token_type Op, int Left, int Right) {
   switch (Op) {
   case TOKEN_PLUS: {
     object_number * Num = NewNumber();
@@ -446,7 +446,7 @@ evalNumberInfixExpressionii(fluff_token_type Op, int Left, int Right) {
  * respectively.
  *
  * @return: number containing the evaluated double or error on the stack */
-evalNumberInfixExpressionid(fluff_token_type Op, int Left, double Right) {
+void evalNumberInfixExpressionid(fluff_token_type Op, int Left, double Right) {
   switch (Op) {
   case TOKEN_PLUS: {
     object_number * Num = NewNumber();
@@ -506,7 +506,7 @@ evalNumberInfixExpressionid(fluff_token_type Op, int Left, double Right) {
  * respectively.
  *
  * @return: number containing the evaluated double or error on the stack */
-evalNumberInfixExpressiondi(fluff_token_type Op, double Left, int Right) {
+void evalNumberInfixExpressiondi(fluff_token_type Op, double Left, int Right) {
   switch (Op) {
   case TOKEN_PLUS: {
     object_number * Num = NewNumber();
@@ -565,7 +565,7 @@ evalNumberInfixExpressiondi(fluff_token_type Op, double Left, int Right) {
  * both the left and right side of the expression are doubles.
  *
  * @return: number containing the evaluated double or error on the stack */
-evalNumberInfixExpressiondd(fluff_token_type Op, double Left, double Right) {
+void evalNumberInfixExpressiondd(fluff_token_type Op, double Left, double Right) {
   switch (Op) {
   case TOKEN_PLUS: {
     object_number * Num = NewNumber();

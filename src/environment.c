@@ -4,7 +4,7 @@ hashed_string hashString(const char *Str) {
   int c;
 
   Return.Str = Str;
-  while ((c = *Str++))
+  while ((c = *Str++) != 0)
     Hash = ((Hash << 5) + Hash) + c; /* hash * 33 + c */
 
   Return.Hash = Hash;
@@ -19,15 +19,15 @@ size_t fastModulus(size_t Hash, size_t BucketLength) {
   return (Hash & (BucketLength - 1));
 }
 
-bool isBucketEmpty(object_bucket *Objects, unsigned int Index) {
+bool isBucketEmpty(object_bucket *Objects, size_t Index) {
   return (Objects[Index].ProbeSequenceLength == 0);
 }
 
 void findSpotForKey(object_bucket *Objects, object_bucket Item,
-                    unsigned int Index, unsigned int BucketLength) {
+                    size_t Index, unsigned int BucketLength) {
   /* Start at the index and move forward till we've met the requirements of
    * Robin Hood hashing */
-  unsigned int InsertionIndex = Index;
+  size_t InsertionIndex = Index;
   while (Item.ProbeSequenceLength <=
          Objects[InsertionIndex].ProbeSequenceLength) {
     InsertionIndex++;
@@ -101,13 +101,8 @@ void InitEnv(environment *Env, unsigned int Size, mallocFunc MallocFunc,
   Env->Outer = NULL;
 }
 
-void FreeEnv(environment * Env) {
-  
-}
-
 void AddToEnv(environment *Env, const char *Var, object *Obj) {
   hashed_string HashedStr;
-  unsigned int Index;
   object_bucket Item;
 
   possiblRehashAndResize(Env);
@@ -115,7 +110,7 @@ void AddToEnv(environment *Env, const char *Var, object *Obj) {
   /* Hash the string to get the index we're going to try to put
    * our Object in */
   HashedStr = hashString(Var);
-  Index = fastModulus(HashedStr.Hash, Env->ObjectsLength);
+  size_t Index = fastModulus(HashedStr.Hash, Env->ObjectsLength);
 
   Item =
       (object_bucket){.ProbeSequenceLength = 1, .Var = HashedStr, .Obj = Obj};
@@ -136,7 +131,7 @@ void AddToEnv(environment *Env, const char *Var, object *Obj) {
 
 void ReplaceInEnv(environment *Env, const char *Var, object *Item) {
   hashed_string HashedStr = hashString(Var);
-  unsigned int Index = fastModulus(HashedStr.Hash, Env->ObjectsLength);
+  size_t Index = fastModulus(HashedStr.Hash, Env->ObjectsLength);
   unsigned int IndexesTried = 0;
 
   while (IndexesTried < Env->ObjectsLength &&
@@ -169,7 +164,7 @@ object *FindInEnv(environment *Env, const char *Var) {
     return NULL;
   }
   hashed_string HashedStr = hashString(Var);
-  unsigned int Index = fastModulus(HashedStr.Hash, Env->ObjectsLength);
+  size_t Index = fastModulus(HashedStr.Hash, Env->ObjectsLength);
   unsigned int IndexesTried = 0;
 
   /* Ideally the first Index we try is where our Var is located.

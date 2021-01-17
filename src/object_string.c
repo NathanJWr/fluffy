@@ -22,7 +22,7 @@ static object *fluffMethodStringLength(object **Args) {
   object_string *Str = (object_string *)Args[0];
   object_number *Length = NewNumber();
   Length->Type = NUM_INTEGER;
-  Length->Int = strlen(Str->Value);
+  Length->Int = (long) strlen(Str->Value);
   return (object *)Length;
 }
 
@@ -32,7 +32,7 @@ static object *fluffMethodStringReverse(object **Args) {
   }
 
   object_string *Str = (object_string *)Args[0];
-  size_t StringLength = strlen(Str->Value);
+  int StringLength = (int) strlen(Str->Value);
   object_string *ReversedStr = NewString(StringLength + 1);
 
   int j = 0;

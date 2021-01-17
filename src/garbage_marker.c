@@ -60,7 +60,7 @@ void markAllObjectsInEnv(environment *Env) {
 
 void markArrayObject(object_array *Arr) {
   unsigned int i;
-  unsigned int ArrLength = ArraySize(Arr->Items);
+  size_t ArrLength = ArraySize(Arr->Items);
   GCArrayMarkAllocation(Arr->Items);
   for (i = 0; i < ArrLength; i++) {
     GCMarkObject(*Arr->Items[i]);
@@ -88,8 +88,6 @@ void markReturnObject(object_return * Return) {
 }
 
 void markClassObject(object_class * Class) {
-  size_t VarLength = ArraySize(Class->Variables);
-
   /* Don't need to iterate through array and mark
    * each item because they are allocated in the ast */
   GCArrayMarkAllocation(Class->Variables);

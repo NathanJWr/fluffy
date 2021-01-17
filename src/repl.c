@@ -1,9 +1,9 @@
 void ReadLine(char *Buffer, size_t *SizeRead, FILE *ReadLocation) {
   char *WriteBuffer = Buffer;
-  char c = fgetc(ReadLocation);
+  int c = fgetc(ReadLocation);
 
   while (c != '\n') {
-    *WriteBuffer++ = c;
+    *WriteBuffer++ = (char) c;
     c = fgetc(ReadLocation);
   }
   *WriteBuffer = '\0';
@@ -15,18 +15,18 @@ int main() {
   parser Parser;
   unsigned int i;
 
-  unsigned int StringStoreSize = 0x10000;
+  int64_t StringStoreSize = 0x10000;
   char *StringStore;
   char *StringStoreBegin;
 
-  size_t ReadBufferSize = 0x1000;
+  unsigned int ReadBufferSize = 0x1000;
   char *ReadBuffer;
 
   size_t GetlineSize;
   ast_base **Programs = NULL;
   environment *Env = CreateEnvironment();
 
-  StringStore = calloc(1, StringStoreSize);
+  StringStore = calloc(1, (unsigned int) StringStoreSize);
   ReadBuffer = calloc(1, ReadBufferSize);
   StringStoreBegin = StringStore;
   EvalInit(Env);
@@ -43,7 +43,7 @@ int main() {
     }
 
     LexerInit(&Lexer, ReadBuffer, ReadBuffer + GetlineSize, StringStore,
-              StringStoreSize);
+              (unsigned int) StringStoreSize);
     ParserInit(&Parser, &Lexer);
     EvalInit(Env);
 

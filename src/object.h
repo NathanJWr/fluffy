@@ -44,7 +44,7 @@ struct object {
   unsigned char Type;
 #endif
 
-  unsigned char Size;
+  size_t Size;
   struct environment *MethodEnv;
 };
 

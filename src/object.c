@@ -69,7 +69,7 @@ void PrintObject(object *Obj) {
   case FLUFF_OBJECT_ARRAY: {
     unsigned int i;
     object_array *Arr = (object_array *)Obj;
-    unsigned int ArrLength = ArraySize(Arr->Items);
+    size_t ArrLength = ArraySize(Arr->Items);
     printf("[");
     for (i = 0; i < ArrLength - 1; i++) {
       PrintObject(*Arr->Items[i]);

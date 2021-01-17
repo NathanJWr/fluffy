@@ -1,5 +1,10 @@
 #define DEBUG_TYPES
 
+#ifdef _WIN32
+#define _CRT_SECURE_NO_WARNINGS
+#pragma warning(disable : 4201) /* nameless struct/union */
+#pragma warning(disable : 4200) /* zero-sized array in struct/union */
+#endif
 /* standard includes */
 #include <stdio.h>
 #include <string.h>
@@ -15,7 +20,6 @@
 #include <stdbool.h>
 
 #ifdef _WIN32
-#define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
 #include "src/win32_platform.h"
 #include "src/win32_platform.c"

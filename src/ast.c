@@ -60,7 +60,7 @@ void AstNodeDelete(ast_base *Node) {
 }
 
 void AstProgramDelete(ast_program *Program) {
-  unsigned int StatementsSize = ArraySize(Program->Statements);
+  size_t StatementsSize = ArraySize(Program->Statements);
   unsigned int i;
   for (i = 0; i < StatementsSize; i++) {
     AstNodeDelete(Program->Statements[i]);
@@ -70,7 +70,7 @@ void AstProgramDelete(ast_program *Program) {
 }
 
 void AstBlockDelete(ast_block_statement *Block) {
-  unsigned int StatementsSize = ArraySize(Block->Statements);
+  size_t StatementsSize = ArraySize(Block->Statements);
   unsigned int i;
   for (i = 0; i < StatementsSize; i++) {
     AstNodeDelete(Block->Statements[i]);
@@ -88,7 +88,7 @@ void AstIfExpressionDelete(ast_if_expression *Expr) {
 }
 
 void AstFunctionLiteralDelete(ast_function_literal *Func) {
-  unsigned int ParametersSize = ArraySize(Func->Parameters);
+  size_t ParametersSize = ArraySize(Func->Parameters);
   unsigned int i;
   for (i = 0; i < ParametersSize; i++) {
     AstNodeDelete((ast_base *) Func->Parameters[i]);
@@ -99,7 +99,7 @@ void AstFunctionLiteralDelete(ast_function_literal *Func) {
 }
 
 void AstFunctionCallDelete(ast_function_call *Call) {
-  unsigned int ArgumentsSize = ArraySize(Call->Arguments);
+  size_t ArgumentsSize = ArraySize(Call->Arguments);
   unsigned int i;
   AstNodeDelete((ast_base *) Call->FunctionName);
   for (i = 0; i < ArgumentsSize; i++) {
@@ -133,7 +133,7 @@ void AstPrefixExpressionDelete(ast_prefix_expression *Prefix) {
 
 void AstArrayLiteralDelete(ast_array_literal *Arr) {
   unsigned int i;
-  unsigned int ArrLength = ArraySize(Arr->Items);
+  size_t ArrLength = ArraySize(Arr->Items);
   for (i = 0; i < ArrLength; i++) {
     AstNodeDelete(Arr->Items[i]);
   }

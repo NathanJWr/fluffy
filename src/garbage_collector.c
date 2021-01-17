@@ -3,7 +3,7 @@ typedef struct gc_alloc_info {
   struct gc_alloc_info *Next;
   struct gc_alloc_info *Prev;
 
-  unsigned int Size;
+  size_t Size;
   unsigned char Mark;
 
   gc_on_free_func OnFree;
@@ -17,13 +17,9 @@ void GCRemoveNode(gc_alloc_info *Node);
 bool GCNeedsCleanup() { return (AllocationsSinceSweep > 1); }
 
 void *GCMalloc(size_t Size) {
-  gc_alloc_info *Info = malloc(sizeof(gc_alloc_info) + Size);
-  Info->Next = NULL;
-  Info->Prev = NULL;
-  Info->Mark = 0;
+  size_t AllocationTotalSize = sizeof(gc_alloc_info) + Size;
+  gc_alloc_info *Info = calloc(1, (unsigned int) AllocationTotalSize);
   Info->Size = Size;
-  Info->OnFree = NULL;
-  Info->OnFreeArgs = NULL;
 
   if (GCHead) {
     Info->Next = GCHead;
